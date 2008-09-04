@@ -76,10 +76,35 @@ class SandboxTestCase(unittest.TestCase):
         shutil.rmtree(self.repodir)
 
     def test_add_file_content_fail(self):
+        # tests for exceptions raised by addition of file content.
+        # this resolves to full path for failure
+        # XXX these tests only works on system with POSIX path!
         self.assertRaises(ValueError, self.sandbox.add_file_content, 
-                          '../notexistfile', '')
+                          '/tmp/nothere', '')
+        self.assertRaises(ValueError, self.sandbox.add_file_content, 
+                          '../invalidpath', '')
+        self.assertRaises(ValueError, self.sandbox.add_file_content, 
+                          '/a/b/../../../invalidpath', '')
+
+    def test_add_file_content_success(self):
+        # testing adding of file.
+        def add(fn, oc):
+            self.sandbox.add_file_content(fn, self.repodir)
+            self.sandbox.add_file_content(fn, oc)
+            fc = open(os.path.join(self.repodir, fn)).read()
+            self.assertEqual(oc, fc, 'file content mismatch')
+
+        add('file1', '1')
+        add('d/file1', '')
+        add('a/b/c/d/e/file1', 'this is totally nested')
+
+        # this is valid for now because 'dir/' gets normalized to 'dir'
+        self.sandbox.add_file_content('dir/', 'dirpath')
+        fc = open(os.path.join(self.repodir, 'dir')).read()
+        self.assertEqual('dirpath', fc, 'file content mismatch')
 
     def test_commit_fail(self):
+        # commit failing due to missing required values
         self.assertRaises(ValueError, self.sandbox.commit, '', '')
         self.assertRaises(ValueError, self.sandbox.commit, 'm', '')
         self.assertRaises(ValueError, self.sandbox.commit, '', 'm')
@@ -96,14 +121,21 @@ class SandboxTestCase(unittest.TestCase):
 
         self.sandbox.add_file_content('file1', self.files[0])
         self.sandbox.add_file_content('file2', self.files[1])
-        # XXX - accessing private attributes
+        # XXX - accessing private attributes for verification
         status = zipdict(self.sandbox._repo.status())
         self.assertEqual(status['added'], ['file1', 'file2',])
         self.sandbox.commit(self.msg, self.user)
-        # XXX - accessing private attributes
+        # XXX - accessing private attributes for verification
         status = zipdict(self.sandbox._repo.status(
                 list_ignored=True, list_clean=True))
         self.assertEqual(status['clean'], ['file1', 'file2',])
+
+    def test_mkdir(self):
+        self.assertRaises(ValueError, self.sandbox.mkdir, '../1')
+        self.assertRaises(ValueError, self.sandbox.mkdir, '/tmp/fail')
+        self.assert_(self.sandbox.mkdir('1'))
+        self.assert_(self.sandbox.mkdir('1/2'))
+        self.assert_(self.sandbox.mkdir('3/2/1'))
 
     def test_status(self):
         self.sandbox.add_file_content('file1', self.files[0])

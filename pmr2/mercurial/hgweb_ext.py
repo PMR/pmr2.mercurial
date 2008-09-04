@@ -45,15 +45,15 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
         # get the manifestdict object generated from ctx.manifest().
         mf_o = ctx.manifest()
         # We need a copy from the original manifest instead of generating
-        # a new one from ctx.manifest() because the return value is a
-        # reference to actual data that can be polluted if the returned
-        # value is manipulated.
+        # a new one from ctx.manifest() as that returns a reference to 
+        # actual data that can be polluted when manipulated.
         mf = mf_o.copy()
-        # build a standard dict in order for the desired update dict.
+        # update a standard dict with required dicts in the order needed
+        # to generate the desired update dict.
         d = {}
         d.update(filelist)
         d.update(mf)
-        # update the manifest copy with desired values.
+        # done.
         mf.update(d)
 
         node = ctx.node()
@@ -86,22 +86,24 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                     continue
                 # not only this, but it might be best to look for
                 # 'clean' from statlist instead.
-                if full not in mf_o:
-                    yield {"file": full,
-                           "parity": parity.next(),
-                           "basename": f,
-                           # XXX we need some real data for this
-                           "date": (0, 0), #fctx.changectx().date(),
-                           "size": 1, #fctx.size(),
-                           "permissions": ''} #mf.flags(full)}
-                else:
+                if full in statlist['clean']:
                     fctx = ctx.filectx(full)
                     yield {"file": full,
                            "parity": parity.next(),
                            "basename": f,
                            "date": fctx.changectx().date(),
                            "size": fctx.size(),
-                           "permissions": mf.flags(full)}
+                           "permissions": mf.flags(full),
+                           }
+                else:
+                    yield {"file": full,
+                           "parity": parity.next(),
+                           "basename": f,
+                           # XXX we need some real data for this
+                           "date": (0, 0), #fctx.changectx().date(),
+                           "size": 1, #fctx.size(),
+                           "permissions": '', #mf.flags(full),
+                           } 
 
         def dirlist(**map):
             fl = files.keys()

@@ -178,6 +178,19 @@ class Sandbox(Storage):
         #self.stripecount = 1
         #self.hgweb.status = _status
 
+    def _fullpath(self, name):
+        """\
+        validates and returns the name provided is within the context
+        of this repository.
+
+        all methods that need to create file need to call this first
+        on the input name.
+        """
+        fn = os.path.normpath(os.path.join(self._path, name))
+        if not fn.startswith(self._path):
+            raise ValueError('supplied filename is outside repository')
+        return fn
+
     def add(self, names):
         """\
         Selects a list of files to be added.
@@ -193,9 +206,11 @@ class Sandbox(Storage):
         """\
         This method adds content to the filename.
         """
-        fn = os.path.normpath(os.path.join(self._path, name))
-        if not fn.startswith(self._path):
-            raise ValueError('supplied filename is outside repository')
+        fn = self._fullpath(name)
+        dirname = os.path.dirname(fn)
+        if not os.path.isdir(dirname):
+            # create the directory
+            self.mkdir(dirname)
         fp = open(fn, 'wb')
         fp.write(content)
         fp.close()
@@ -217,6 +232,32 @@ class Sandbox(Storage):
             # update to the new context
             self._changectx(result)
         return result
+
+    def mkdir(self, dirname):
+        """\
+        Creates a dir with dirname.  Currently provided as helper.
+
+        Normally there isn't a need to call this, as Mercurial does not
+        track directories.  Adding a file to a specific location should
+        create the directory if it does not already exist.
+        """
+
+        def mkdir_p(d):
+            # make parent dir as needed.
+            p, n = os.path.split(d)
+            if not os.path.isdir(p):
+                mkdir_p(p)
+            if not os.path.isdir(d):
+                # FIXME trap this call for below?
+                os.mkdir(d)
+            
+        fn = self._fullpath(dirname)
+        # FIXME customize exception message to show which dir failed?
+        try:
+            mkdir_p(fn)
+        except OSError:
+            raise
+        return True
 
     def status(self, path=''):
         """\
