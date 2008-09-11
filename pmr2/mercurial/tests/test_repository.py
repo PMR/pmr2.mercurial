@@ -112,21 +112,14 @@ class SandboxTestCase(unittest.TestCase):
     def test_file_modification(self):
         # testing file adding features
 
-        def zipdict(st):
-            changetypes = (
-                'modified', 'added', 'removed', 'deleted', 'unknown', 
-                'ignored', 'clean',
-            )
-            return dict(zip(changetypes, st))
-
         self.sandbox.add_file_content('file1', self.files[0])
         self.sandbox.add_file_content('file2', self.files[1])
         # XXX - accessing private attributes for verification
-        status = zipdict(self.sandbox._repo.status())
+        status = statdict(self.sandbox._repo.status())
         self.assertEqual(status['added'], ['file1', 'file2',])
         self.sandbox.commit(self.msg, self.user)
         # XXX - accessing private attributes for verification
-        status = zipdict(self.sandbox._repo.status(
+        status = statdict(self.sandbox._repo.status(
                 list_ignored=True, list_clean=True))
         self.assertEqual(status['clean'], ['file1', 'file2',])
 
@@ -135,6 +128,7 @@ class SandboxTestCase(unittest.TestCase):
         self.assertRaises(ValueError, self.sandbox.mkdir, '/tmp/fail')
         self.assert_(self.sandbox.mkdir('1'))
         self.assert_(self.sandbox.mkdir('1/2'))
+        self.assert_(self.sandbox.mkdir('3/2/1'))
         self.assert_(self.sandbox.mkdir('3/2/1'))
 
     def test_status(self):
@@ -145,7 +139,102 @@ class SandboxTestCase(unittest.TestCase):
         self.sandbox.add_file_content('file3', self.files[2])
         stat = [i for i in self.sandbox.status()]
         fent = [i for i in stat[0]['fentries']()]
+        # XXX could use more validation here based on below
+        # print '%s\n%s\n' % (stat, fent)
         self.assertEqual(len(fent), 3, 'number of file entries != 3')
+
+    def test_rename_file_failure(self):
+        # invalid type
+        self.assertRaises(TypeError,
+                self.sandbox.rename, None, '../move1')
+        self.assertRaises(TypeError,
+                self.sandbox.rename, '../file1', None)
+        self.assertRaises(TypeError,
+                self.sandbox.rename, '../file1', ['../move1'])
+        # invalid source (type is ignored, but 'True' does not exist)
+        self.assertRaises(ValueError,
+                self.sandbox.rename, [True], 'move1')
+        # destination out
+        self.assertRaises(ValueError,
+                self.sandbox.rename, '../file1', '../move1')
+        # source does not exist
+        self.assertRaises(ValueError,
+                self.sandbox.rename, '../file1', 'move1')
+        self.assertRaises(ValueError,
+                self.sandbox.rename, ['../file1', 'file'], 'move1')
+        # can't overwrite file
+        self.sandbox.add_file_content('file1', self.files[0])
+        self.sandbox.add_file_content('move1', self.files[0])
+        self.assertRaises(ValueError,
+                self.sandbox.rename, ['file1'], 'move1')
+        self.sandbox.add_file_content('file2', self.files[0])
+        self.assertRaises(ValueError,
+                self.sandbox.rename, ['file1', 'file2'], 'move1')
+        self.assertRaises(ValueError,
+                self.sandbox.rename, ['file1', 'file2'], 'move1/move2')
+        # no valid source
+        self.assertRaises(ValueError,
+                self.sandbox.rename, ['/file1', '/file2'], 'move2')
+
+    def test_rename_file_success(self):
+        self.sandbox.add_file_content('file1', self.files[0])
+        errs, copied = self.sandbox.rename('file1', 'move1')
+        # private _repo
+        status = statdict(self.sandbox._repo.status())
+        self.assertEqual(errs, 0)
+        # copied results are lists of tuples, first item is basename
+        self.assertEqual(copied[0][0], 'file1')
+        self.assertEqual(status['added'], ['move1',])
+        self.sandbox.commit(self.msg, self.user)
+
+        errs, copied = self.sandbox.rename('move1', 'move2')
+        # private _repo
+        status = statdict(self.sandbox._repo.status())
+        self.assertEqual(status['removed'], ['move1',])
+        self.assertEqual(status['added'], ['move2',])
+
+        t = join('dir', 'move3')
+        errs, copied = self.sandbox.rename('move2', t)
+        # private _repo
+        status = statdict(self.sandbox._repo.status())
+        self.assertEqual(status['added'], [t,])
+
+        self.sandbox.add_file_content(self.filelist[0], self.files[0])
+        self.sandbox.add_file_content(self.filelist[1], self.files[1])
+        self.sandbox.add_file_content(self.filelist[2], self.files[2])
+        self.sandbox.commit(self.msg, self.user)
+
+        nd = join('some', 'nested', 'dir')
+        errs, copied = self.sandbox.rename(self.filelist, nd)
+        # private _repo
+        status = statdict(self.sandbox._repo.status())
+        self.assertEqual(status['added'], [join(nd, i) for i in self.filelist])
+        self.assertEqual(status['removed'], self.filelist)
+
+    def test_rename_file_other(self):
+        self.sandbox.add_file_content('file1', self.files[0])
+        self.sandbox.add_file_content('file2', self.files[0])
+        self.sandbox.add_file_content('file3', self.files[0])
+        self.sandbox.commit(self.msg, self.user)
+        errs, copied = self.sandbox.rename(['file1', 'file2', 'file3'], 'move1')
+        self.assertEqual(errs, 0)
+        errs, copied = self.sandbox.rename(
+            ['move1/file1', 'move1/file2', 'move2/file3'],  # move2/file3
+            '',  # empty = root
+        )
+        self.assertEqual(errs, 1)
+
+    def test_delete_file(self):
+        pass
+
+
+def statdict(st):
+    # build a stat dictionary
+    changetypes = (
+        'modified', 'added', 'removed', 'deleted', 'unknown', 
+        'ignored', 'clean',
+    )
+    return dict(zip(changetypes, st))
 
 
 if __name__ == '__main__':

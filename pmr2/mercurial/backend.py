@@ -3,12 +3,16 @@ import ConfigParser
 from cStringIO import StringIO
 from mercurial import ui, hg, revlog, demandimport, cmdutil, archival
 
+# XXX exists in Mercurial 0.9.5
+from mercurial.commands import docopy
+
 # modified hgweb
 from hgweb_ext import hgweb_ext as hgweb
 
 # Mercurial exceptions to catch
 from mercurial.hg import RepoError
 from mercurial.util import Abort
+from mercurial.lock import LockHeld
 
 demandimport.disable()
 
@@ -186,7 +190,10 @@ class Sandbox(Storage):
         all methods that need to create file need to call this first
         on the input name.
         """
-        fn = os.path.normpath(os.path.join(self._path, name))
+        if os.path.isabs(name):
+            fn = name
+        else:
+            fn = os.path.normpath(os.path.join(self._path, name))
         if not fn.startswith(self._path):
             raise ValueError('supplied filename is outside repository')
         return fn
@@ -242,22 +249,96 @@ class Sandbox(Storage):
         create the directory if it does not already exist.
         """
 
-        def mkdir_p(d):
-            # make parent dir as needed.
-            p, n = os.path.split(d)
-            if not os.path.isdir(p):
-                mkdir_p(p)
-            if not os.path.isdir(d):
-                # FIXME trap this call for below?
-                os.mkdir(d)
-            
         fn = self._fullpath(dirname)
-        # FIXME customize exception message to show which dir failed?
-        try:
-            mkdir_p(fn)
-        except OSError:
-            raise
+        if not os.path.exists(fn):
+            try:
+                os.makedirs(fn, mode=0700)
+            except:  # OSError:
+                raise ValueError('cannot create directory with specified path')
+        elif not os.path.isdir(fn):
+            raise ValueError('cannot create directory; path already exists')
         return True
+
+    def rename(self, source, dest):
+        """\
+        This method contains a copy of mercurial.commands.rename, used
+        to rename source into dest.
+
+        source -
+            either a string of a list of strings
+        dest -
+            must be a string.
+        with the option 'force' enabled.
+
+        Return values are the number of errors, and a list of files
+        that have been copied if the call was successful.
+        """
+        # FIXME exceptions here will need to be specified for the 
+        # generic interface when migrated.
+
+        def fullpath_(name):
+            try: return self._fullpath(name)
+            except: return None
+
+        if isinstance(source, basestring):
+            # XXX can this really work with unicode?  below also
+            source = [source]
+        if not isinstance(source, list):
+            raise TypeError(
+                    'source must be either a list of strings or a string')
+        if not isinstance(dest, basestring):
+            raise TypeError('dest must be of type string')
+
+        try: f_dest = self._fullpath(dest)
+        except ValueError:
+            raise ValueError('destination path is outside the repository')
+
+        # must resolve full path as cwd is almost always elsewhere.
+        pats = [fullpath_(i) for i in source]
+        pats = [i for i in pats if i is not None and os.path.exists(i)]
+        if not pats:
+            raise ValueError('no valid source found')
+
+        c = len(pats)
+        if c == 0:
+            # no safe files, length of source = # of errors.
+            return len(source), []
+        if c == 1:
+            if os.path.exists(f_dest) and not os.path.isdir(f_dest):
+                raise ValueError('destination exists and is not a directory')
+        else:
+            # make path if source files > 1 as required by docopy
+            self.mkdir(f_dest)
+
+        perrs = len(source) - c  # number of invalid source
+        pats.append(f_dest)  # add destination for Mercurial's docopy.
+
+        # docopy required options.
+        opts = {'force': 1, 'after': 0}
+
+        def rename_(ui, repo):
+            # copied from mercurial.commands.rename (0.9.5)
+            # slightly modified, see below
+            wlock = repo.wlock(False)
+            try:
+                errs, copied = docopy(ui, repo, pats, opts)
+                names = []
+                for abs, rel, exact in copied:
+                    if ui.verbose or not exact:
+                        ui.status(_('removing %s\n') % rel)
+                    names.append(abs)
+                if not opts.get('dry_run'):
+                    repo.remove(names, True)
+                return errs, copied  # also return copied
+            finally:
+                del wlock
+
+        # XXX this can raise hg specific exceptions!
+        # FIXME for the standardized library, common exception
+        # classes independent from specific libraries must be used.
+        errs, copied = rename_(self._ui, self._repo)
+        errs += perrs
+        return errs, copied
 
     def status(self, path=''):
         """\
