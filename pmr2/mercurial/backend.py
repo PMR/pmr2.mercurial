@@ -89,6 +89,7 @@ class Storage(object):
             self._hgweb.t = _t
         except RepoError:
             # Repository initializing error.
+            # XXX should include original traceback
             raise ValueError('repository does not exist at path')
 
         self._changectx(ctx)
@@ -118,11 +119,9 @@ class Storage(object):
             if hg.repository(u, path, create=1):
                 result = True
         except:
-            pass
-
-        if not result:
-            # XXX maybe IO error instead?
+            # XXX should include original traceback
             raise ValueError("couldn't create repository at path")
+
         return result
 
     def _changectx(self, changeid=None):
@@ -198,6 +197,32 @@ class Sandbox(Storage):
             raise ValueError('supplied filename is outside repository')
         return fn
 
+    def _filter_paths(self, paths):
+        # filter out paths using fullpath.
+        # assumes files in manifest/status exist on filesystem
+
+        def fullpath(name):
+            try: return self._fullpath(name)
+            except: return None
+
+        # must resolve full path as cwd is almost always elsewhere.
+        result = [fullpath(i) for i in paths]
+        result = [i for i in result if i is not None and os.path.exists(i)]
+        return result
+
+    def _source_check(self, source):
+        # param type check
+        if isinstance(source, basestring):
+            # XXX can this really work with unicode?  below also
+            return [source]
+        if not isinstance(source, list):
+            raise TypeError(
+                    'source must be either a list of strings or a string')
+        for i in source:
+            if not isinstance(i, basestring):
+                raise TypeError('invalid type present in source list')
+        return source
+
     def add(self, names):
         """\
         Selects a list of files to be added.
@@ -259,6 +284,30 @@ class Sandbox(Storage):
             raise ValueError('cannot create directory; path already exists')
         return True
 
+    def remove(self, source):
+        """\
+        This method removes files.
+
+        source -
+            the list of files to remove.  string or list of strings.
+        """
+
+        filtered = self._source_check(source)
+        filtered = self._filter_paths(filtered)
+
+        remove = []
+        for src, abs, rel, exact in cmdutil.walk(self._repo, filtered, {}):
+            remove.append(self._fullpath(abs))
+
+        forget = []
+        # using status, which is relative path within the repo
+        added = self._repo.status()[1]
+        for i in source:
+            if i in added:
+                forget.append(i)
+        self._repo.forget(forget)
+        self._repo.remove(remove, unlink=True)
+
     def rename(self, source, dest):
         """\
         This method contains a copy of mercurial.commands.rename, used
@@ -276,28 +325,21 @@ class Sandbox(Storage):
         # FIXME exceptions here will need to be specified for the 
         # generic interface when migrated.
 
-        def fullpath_(name):
-            try: return self._fullpath(name)
-            except: return None
-
-        if isinstance(source, basestring):
-            # XXX can this really work with unicode?  below also
-            source = [source]
-        if not isinstance(source, list):
-            raise TypeError(
-                    'source must be either a list of strings or a string')
+        # param type check
+        source = self._source_check(source)
         if not isinstance(dest, basestring):
+            # XXX can this really work with unicode?  below also
             raise TypeError('dest must be of type string')
 
+        # source validation + param type check
+        pats = self._filter_paths(source)
+        if not pats:
+            raise ValueError('no valid source found')
+
+        # destination.
         try: f_dest = self._fullpath(dest)
         except ValueError:
             raise ValueError('destination path is outside the repository')
-
-        # must resolve full path as cwd is almost always elsewhere.
-        pats = [fullpath_(i) for i in source]
-        pats = [i for i in pats if i is not None and os.path.exists(i)]
-        if not pats:
-            raise ValueError('no valid source found')
 
         c = len(pats)
         if c == 0:
@@ -316,7 +358,7 @@ class Sandbox(Storage):
         # docopy required options.
         opts = {'force': 1, 'after': 0}
 
-        def rename_(ui, repo):
+        def rename(ui, repo):
             # copied from mercurial.commands.rename (0.9.5)
             # slightly modified, see below
             wlock = repo.wlock(False)
@@ -325,7 +367,7 @@ class Sandbox(Storage):
                 names = []
                 for abs, rel, exact in copied:
                     if ui.verbose or not exact:
-                        ui.status(_('removing %s\n') % rel)
+                        ui.status('removing %s\n' % rel)  # removed _
                     names.append(abs)
                 if not opts.get('dry_run'):
                     repo.remove(names, True)
@@ -336,7 +378,7 @@ class Sandbox(Storage):
         # XXX this can raise hg specific exceptions!
         # FIXME for the standardized library, common exception
         # classes independent from specific libraries must be used.
-        errs, copied = rename_(self._ui, self._repo)
+        errs, copied = rename(self._ui, self._repo)
         errs += perrs
         return errs, copied
 
