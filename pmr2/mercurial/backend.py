@@ -90,6 +90,8 @@ class Storage(object):
             self._repo = hg.repository(self._ui, self._path)
             self._hgweb = hgweb(self._repo)
             self._hgweb.t = _t
+            # XXX need to make this settable
+            self._hgweb.maxchanges = 10
         except RepoError:
             # Repository initializing error.
             # XXX should include original traceback
@@ -143,19 +145,82 @@ class Storage(object):
             self._ctx = None
         return self._ctx
 
-    def manifest(self, label=None, path=''):
+    def clone(self, dest, rev=None):
+        """\
+        Clones this repository to target destination `dest'.
+
+        dest -
+            the destination.
+        rev -
+            specifies specific revisions to clone.
+        """
+
+        if not isinstance(dest, basestring):
+            raise TypeError('dest must be an instance of basestring')
+
+        if isinstance(dest, unicode):
+            dest = dest.encode('utf8')
+
+        dest = os.path.normpath(dest)
+
+        if os.path.exists(dest):
+            raise PathExists('dest already exists')
+
+        pdir = os.path.split(dest)[0]
+        if not os.path.exists(pdir):
+            # try to create parent dir.
+            try:
+                os.makedirs(pdir, mode=0700)
+            except:
+                raise PathInvalid(
+                        'cannot create directory with specified path')
+
+        if rev:
+            try:
+                rev = [self._repo.lookup(rev)]
+            except:
+                raise RevisionNotFound('revision %s not found' % rev)
+
+        clone_result = hg.clone(self._ui, source=self._path, dest=dest, 
+                rev=rev, update=True)
+        repo, repo_clone = clone_result
+        # since it did get reinitialized.
+        self._repo = repo
+
+    def log(self, rev=None, branch=None, limit=0):
+        """\
+        This method returns the history of the repository.
+
+        rev -
+            specifies which revision to start the history from.
+        branch -
+            specifies which branch to check the logs on.
+
+        This method is implemented as a wrapper around hgweb.changelog(),
+        so the value return is actually an iterator, and the structure
+        will likely change when this class is migrated to a common
+        interface.
+        """
+
+        ctx = self._changectx(rev)
+        if ctx is None:
+            raise RevisionNotFound('revision %s not found' % rev)
+        return self._hgweb.changelog(ctx)
+
+    def manifest(self, rev=None, path=''):
         """\
         Returns a manifest of the current directory.
-        """
-        #Implemented as a wrapper around hgweb.manifest().
 
-        if label is None:
-            label = self._repo.dirstate.branch()
-        ctx = self._changectx(label)
-        if ctx is not None:
-            return self._hgweb.manifest(ctx, path)
-        else:
-            raise ValueError('%s not found.' % label)
+        This method is implemented as a wrapper around hgweb.changelog(),
+        so the value return is actually an iterator, and the structure
+        will likely change when this class is migrated to a common
+        interface.
+        """
+
+        ctx = self._changectx(rev)
+        if ctx is None:
+            raise RevisionNotFound('revision %s not found' % rev)
+        return self._hgweb.manifest(ctx, path)
 
     @property
     def output(self):
@@ -194,7 +259,7 @@ class Sandbox(Storage):
         else:
             fn = os.path.normpath(os.path.join(self._path, name))
         if not fn.startswith(self._path):
-            raise PathInvalid('supplied filename is outside repository')
+            raise PathInvalid('supplied path is outside repository')
         return fn
 
     def _filter_paths(self, paths):
@@ -326,6 +391,9 @@ class Sandbox(Storage):
         """
         # FIXME exceptions here will need to be specified for the 
         # generic interface when migrated.
+        # FIXME should use Mercurial 1.0.2 (1.0.0?) because the copy
+        # function provided will allow copy + remove for rename.  So
+        # there will be no need to implement copy separately here.
 
         # param type check
         source = self._source_check(source)

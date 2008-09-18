@@ -8,3 +8,7 @@ class PathNotDir(PathInvalid):
 
 class PathExists(PathInvalid):
     """path exists"""
+
+
+class RevisionNotFound(ValueError):
+    """revision not found"""

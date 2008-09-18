@@ -22,7 +22,9 @@ class RepositoryInitTestCase(unittest.TestCase):
         # existing directory
         self.assertRaises(PathExists, Storage.create, self.repodir)
         # existing file, causing path to be invalid.
-        invalid = tempfile.mkstemp()[1]
+        tf = tempfile.mkstemp()
+        os.close(tf[0])  # close the descrptior that was opened above
+        invalid = tf[1]
         invalid2 = join(invalid, 'nested')
         invalid3 = join(invalid, 'nested', 'evendeeper')
         self.assertRaises(PathInvalid, Storage.create, invalid, False)
@@ -73,8 +75,9 @@ class RepositoryTestCase(unittest.TestCase):
 class SandboxTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.repodir = tempfile.mkdtemp()
-        Sandbox.create(self.repodir, False)
+        self.testdir = tempfile.mkdtemp()
+        self.repodir = join(self.testdir, 'repodir')
+        Sandbox.create(self.repodir, True)
         self.sandbox = Sandbox(self.repodir, ctx='tip')
         self.path = dirname(__file__)
         self.filelist = ['file1', 'file2', 'file3',]
@@ -83,7 +86,7 @@ class SandboxTestCase(unittest.TestCase):
         self.user = 'Tester <test@example.com>'
         
     def tearDown(self):
-        shutil.rmtree(self.repodir)
+        shutil.rmtree(self.testdir)
 
     def _demo(self):
         self.sandbox.add_file_content('file1', self.files[0])
@@ -119,6 +122,41 @@ class SandboxTestCase(unittest.TestCase):
         add(join('d', 'file1',), 'in a dir')
         add(join('a', 'b', 'c', 'd', 'e', 'file1',), 'this is totally nested')
 
+    def test_clone_fail(self):
+        # Testing clone down here because we need sandbox to create data
+        self.assertRaises(TypeError, self.sandbox.clone, None)
+        fakedir = tempfile.mkdtemp()
+        # can't overwrite any existing destination.
+        self.assertRaises(PathExists, self.sandbox.clone, fakedir)
+        os.rmdir(fakedir)
+
+    def test_clone_success(self):
+        # Testing clone down here because we need sandbox to create data
+        # depends on manifest working
+
+        self._demo()
+        dest = [join(self.testdir, str(i)) for i in xrange(3)]
+        self.sandbox.clone(dest[0])
+        repo0 = Storage(dest[0])
+        
+        # nested
+        dest[1] = join(dest[1], '1', '2', '3')
+        repo0.clone(dest[1])
+
+        repo1 = Storage(dest[1])
+        m0 = repo0.manifest().next()['node']
+        m1 = repo1.manifest().next()['node']
+        self.assertEqual(m0, m1)
+
+        # definitely not an existing rev
+        self.assertRaises(RevisionNotFound, repo1.clone, dest[2], ['zzz'])
+
+        # cloning up to an existing rev
+        node = repo1._repo.changelog.node(1)
+        repo1.clone(dest[2], node)
+        repo2 = Storage(dest[2])
+        self.assertEqual(repo2._repo.changelog.count(), 2)
+
     def test_commit_fail(self):
         # commit failing due to missing required values
         self.assertRaises(ValueError, self.sandbox.commit, '', '')
@@ -146,6 +184,17 @@ class SandboxTestCase(unittest.TestCase):
         status = statdict(self.sandbox._repo.status(
                 list_ignored=True, list_clean=True))
         self.assertEqual(status['clean'], ['file1', 'file2',])
+
+    def test_log(self):
+        self._demo()
+        loggen = self.sandbox.log(limit=-1)
+        log = [i for i in loggen.next()['entries']()]
+        # not really needing a test here, since currently it's based
+        # on the hgweb directly.
+        self.assertEqual(log[0]['desc'], 'added3')
+        self.assertEqual(log[0]['author'], 'user3 <3@example.com>')
+        self.assertEqual(log[2]['desc'], 'added1')
+        self.assertEqual(log[2]['author'], 'user1 <1@example.com>')
 
     def test_mkdir(self):
         # invalid parent path
@@ -376,10 +425,6 @@ class SandboxTestCase(unittest.TestCase):
             '',  # empty = root
         )
         self.assertEqual(errs, 1)
-
-    def test_delete_file(self):
-        pass
-
 
 def statdict(st):
     # build a stat dictionary
