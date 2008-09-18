@@ -20,15 +20,17 @@ class RepositoryInitTestCase(unittest.TestCase):
     def test_create_failed(self):
         # existing directory
         self.assertRaises(ValueError, Storage.create, self.repodir)
-        # invalid location
-        self.assertRaises(ValueError, Storage.create, '/dev/null', False)
+        # existing file
+        invalid = tempfile.mkstemp()[1]
+        self.assertRaises(ValueError, Storage.create, invalid, False)
+        os.unlink(invalid)
 
     def test_create_success1(self):
         result = Storage.create(self.repodir, False)
         self.assert_(result, 'Storage not created')
 
     def test_create_success2(self):
-        result = Storage.create(self.repodir + '/test', True)
+        result = Storage.create(join(self.repodir, 'test'), True)
         self.assert_(result, 'Storage not created')
 
     def test_init_success(self):
@@ -78,13 +80,14 @@ class SandboxTestCase(unittest.TestCase):
     def test_add_file_content_fail(self):
         # tests for exceptions raised by addition of file content.
         # this resolves to full path for failure
-        # XXX these tests only works on system with POSIX path!
-        self.assertRaises(ValueError, self.sandbox.add_file_content, 
-                          '/tmp/nothere', '')
-        self.assertRaises(ValueError, self.sandbox.add_file_content, 
-                          '../invalidpath', '')
-        self.assertRaises(ValueError, self.sandbox.add_file_content, 
-                          '/a/b/../../../invalidpath', '')
+        pd = os.pardir
+        elsewhere = tempfile.mktemp()
+        outside = os.path.abspath(join(os.curdir, 'outside'))
+        invalidpath = join(pd, 'invalidpath')
+        invalidpath2 = join('a', 'b', pd, pd, pd, 'invalidpath')
+        paths = (elsewhere, outside, invalidpath, invalidpath2,)
+        for i in paths:
+            self.assertRaises(ValueError, self.sandbox.add_file_content, i, '')
 
     def test_add_file_content_success(self):
         # testing adding of file.
@@ -95,19 +98,22 @@ class SandboxTestCase(unittest.TestCase):
             self.assertEqual(oc, fc, 'file content mismatch')
 
         add('file1', '1')
-        add('d/file1', '')
-        add('a/b/c/d/e/file1', 'this is totally nested')
-
-        # this is valid for now because 'dir/' gets normalized to 'dir'
-        self.sandbox.add_file_content('dir/', 'dirpath')
-        fc = open(os.path.join(self.repodir, 'dir')).read()
-        self.assertEqual('dirpath', fc, 'file content mismatch')
+        add(join('d', 'file1',), 'in a dir')
+        add(join('a', 'b', 'c', 'd', 'e', 'file1',), 'this is totally nested')
 
     def test_commit_fail(self):
         # commit failing due to missing required values
         self.assertRaises(ValueError, self.sandbox.commit, '', '')
         self.assertRaises(ValueError, self.sandbox.commit, 'm', '')
         self.assertRaises(ValueError, self.sandbox.commit, '', 'm')
+
+    def test_commit_success(self):
+        self.sandbox.add_file_content('file1', self.files[0])
+        self.sandbox.commit(self.msg, self.user)
+        # private
+        status = statdict(self.sandbox._repo.status(
+                list_ignored=True, list_clean=True))
+        self.assertEqual(status['clean'], ['file1'])
 
     def test_file_modification(self):
         # testing file adding features
@@ -124,12 +130,25 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(status['clean'], ['file1', 'file2',])
 
     def test_mkdir(self):
-        self.assertRaises(ValueError, self.sandbox.mkdir, '../1')
-        self.assertRaises(ValueError, self.sandbox.mkdir, '/tmp/fail')
+        # invalid parent path
+        self.assertRaises(ValueError, self.sandbox.mkdir, join(os.pardir, '1'))
+
+        # outside repo
+        fakedir = tempfile.mkdtemp()
+        self.assertRaises(ValueError, self.sandbox.mkdir, fakedir)
+        shutil.rmtree(fakedir)
+
         self.assert_(self.sandbox.mkdir('1'))
-        self.assert_(self.sandbox.mkdir('1/2'))
-        self.assert_(self.sandbox.mkdir('3/2/1'))
-        self.assert_(self.sandbox.mkdir('3/2/1'))
+        self.assert_(self.sandbox.mkdir(join('1', '2')))
+        self.assert_(self.sandbox.mkdir(join('3', '2', '1')))
+        # redoing it will be fine.
+        self.assert_(self.sandbox.mkdir(join('3', '2', '1')))
+        self.assert_(self.sandbox.mkdir(join('3', '2')))
+        # new nested
+        self.assert_(self.sandbox.mkdir(join('3', '2', '2')))
+
+        self.assert_(os.path.isdir(os.path.join(self.repodir, join('1', '2'))))
+        self.assert_(os.path.isdir(os.path.join(self.repodir, join('3', '2'))))
 
     def test_status(self):
         self.sandbox.add_file_content('file1', self.files[0])
@@ -156,21 +175,28 @@ class SandboxTestCase(unittest.TestCase):
         exist or not within the repository.
         """
 
+        pd = os.pardir
         self.assertEqual(self.sandbox._filter_paths(
-                ['test/../../outside', '/notinroot', '/tmp', 'nonexist',]
+                [
+                    join('test', pd, pd, 'outside'), 
+                    tempfile.gettempdir(),
+                    'nonexist',
+                ]
             ), [])
 
     def test_rename_file_failure(self):
 
+        pd = os.pardir
+        ps = os.pathsep
         self.sandbox.add_file_content('file1', self.files[0])
         # destination not in repo
         self.assertRaises(ValueError,
-                self.sandbox.rename, 'file1', '../move1')
+                self.sandbox.rename, 'file1', join(pd, 'move1'))
         # invalid type for dest
         self.assertRaises(TypeError,
                 self.sandbox.rename, 'file1', None)
         self.assertRaises(TypeError,
-                self.sandbox.rename, 'file1', ['../move1'])
+                self.sandbox.rename, 'file1', [join(pd, 'move1')])
 
         # can't overwrite file
         self.sandbox.add_file_content('move1', self.files[0])
@@ -180,10 +206,12 @@ class SandboxTestCase(unittest.TestCase):
         self.assertRaises(ValueError,
                 self.sandbox.rename, ['file1', 'file2'], 'move1')
         self.assertRaises(ValueError,
-                self.sandbox.rename, ['file1', 'file2'], 'move1/move2')
+                self.sandbox.rename, ['file1', 'file2'],
+                join('move1', 'move2'))
         # no valid source
+        # XXX meant to get to root
         self.assertRaises(ValueError,
-                self.sandbox.rename, ['/file1', '/file2'], 'move2')
+                self.sandbox.rename, [ps + 'file1', ps + 'file2'], 'move2')
 
     def test_remove_file(self):
         for i, x in enumerate(self.filelist):
@@ -322,7 +350,11 @@ class SandboxTestCase(unittest.TestCase):
         errs, copied = self.sandbox.rename(['file1', 'file2', 'file3'], 'move1')
         self.assertEqual(errs, 0)
         errs, copied = self.sandbox.rename(
-            ['move1/file1', 'move1/file2', 'move2/file3'],  # move2/file3
+            [
+                join('move1', 'file1'),
+                join('move1', 'file2'),
+                join('move2', 'file3'),
+            ],  # move2/file3
             '',  # empty = root
         )
         self.assertEqual(errs, 1)
