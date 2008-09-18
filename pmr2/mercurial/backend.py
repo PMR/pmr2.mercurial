@@ -14,12 +14,15 @@ from mercurial.hg import RepoError
 from mercurial.util import Abort
 from mercurial.lock import LockHeld
 
+from pmr2.mercurial.exceptions import *
+
 demandimport.disable()
 
 __all__ = [
     'Storage',
     'Sandbox',
 ]
+
 
 class _ui(ui.ui):
     """\
@@ -90,7 +93,7 @@ class Storage(object):
         except RepoError:
             # Repository initializing error.
             # XXX should include original traceback
-            raise ValueError('repository does not exist at path')
+            raise PathInvalid('repository does not exist at path')
 
         self._changectx(ctx)
 
@@ -106,12 +109,12 @@ class Storage(object):
 
         if create_dir:
             if os.path.isdir(path):
-                raise ValueError('directory already exist; cannot create a '
-                                 'new repository in existing directory')
+                raise PathExists('directory already exist; '
+                        'cannot create a new repository in existing directory')
             try:
-                os.mkdir(path)
+                os.makedirs(path, mode=0700)
             except OSError:
-                raise ValueError('repository directory cannot be created')
+                raise PathInvalid('repository directory cannot be created')
 
         result = False
         try:
@@ -120,27 +123,24 @@ class Storage(object):
                 result = True
         except:
             # XXX should include original traceback
-            raise ValueError("couldn't create repository at path")
+            # XXX assuming to be invalid path
+            raise PathInvalid("couldn't create repository at path")
 
         return result
 
     def _changectx(self, changeid=None):
         """\
-        Much like changectx of mercurial repository, except it will
-        pick the "default" branch as according to dirlist.
-
-        This might be a private method as not all backend may require
-        this once this class is migrated to using a standard interface.
+        A private helper method that wraps around changectx of 
+        mercurial repository; it will pick the "default" branch as 
+        according to dirlist.
         """
 
         if changeid is None:
             changeid = self._repo.dirstate.branch()
-
         try:
             self._ctx = self._repo.changectx(changeid)
         except RepoError:
             self._ctx = None
-
         return self._ctx
 
     def manifest(self, label=None, path=''):
@@ -194,7 +194,7 @@ class Sandbox(Storage):
         else:
             fn = os.path.normpath(os.path.join(self._path, name))
         if not fn.startswith(self._path):
-            raise ValueError('supplied filename is outside repository')
+            raise PathInvalid('supplied filename is outside repository')
         return fn
 
     def _filter_paths(self, paths):
@@ -279,9 +279,11 @@ class Sandbox(Storage):
             try:
                 os.makedirs(fn, mode=0700)
             except:  # OSError:
-                raise ValueError('cannot create directory with specified path')
+                raise PathInvalid(
+                        'cannot create directory with specified path')
         elif not os.path.isdir(fn):
-            raise ValueError('cannot create directory; path already exists')
+            raise PathExists('cannot create directory; '
+                                    'path already exists')
         return True
 
     def remove(self, source):
@@ -337,9 +339,7 @@ class Sandbox(Storage):
             raise ValueError('no valid source found')
 
         # destination.
-        try: f_dest = self._fullpath(dest)
-        except ValueError:
-            raise ValueError('destination path is outside the repository')
+        f_dest = self._fullpath(dest)
 
         c = len(pats)
         if c == 0:
@@ -347,7 +347,11 @@ class Sandbox(Storage):
             return len(source), []
         if c == 1:
             if os.path.exists(f_dest) and not os.path.isdir(f_dest):
-                raise ValueError('destination exists and is not a directory')
+                raise PathNotDir(
+                        'destination exists and is not a directory')
+                # in UI, it could prompt the user that the dest file 
+                # will be overwritten, and implement it as delete of 
+                # dest and move from source to dest.
         else:
             # make path if source files > 1 as required by docopy
             self.mkdir(f_dest)

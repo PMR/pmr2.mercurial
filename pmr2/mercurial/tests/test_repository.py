@@ -3,7 +3,8 @@ import tempfile
 import shutil
 import os
 from os.path import dirname, join
-from pmr2.mercurial import Storage, Sandbox
+from pmr2.mercurial import *
+from pmr2.mercurial.exceptions import *
 
 class RepositoryInitTestCase(unittest.TestCase):
 
@@ -15,14 +16,19 @@ class RepositoryInitTestCase(unittest.TestCase):
 
     def test_init_failed(self):
         # testing init would fail on a directory not managed by hg
-        self.assertRaises(ValueError, Storage, self.repodir)
+        self.assertRaises(PathInvalid, Storage, self.repodir)
 
     def test_create_failed(self):
         # existing directory
-        self.assertRaises(ValueError, Storage.create, self.repodir)
-        # existing file
+        self.assertRaises(PathExists, Storage.create, self.repodir)
+        # existing file, causing path to be invalid.
         invalid = tempfile.mkstemp()[1]
-        self.assertRaises(ValueError, Storage.create, invalid, False)
+        invalid2 = join(invalid, 'nested')
+        invalid3 = join(invalid, 'nested', 'evendeeper')
+        self.assertRaises(PathInvalid, Storage.create, invalid, False)
+        self.assertRaises(PathInvalid, Storage.create, invalid2, False)
+        # try to create a new one
+        self.assertRaises(PathInvalid, Storage.create, invalid3, True)
         os.unlink(invalid)
 
     def test_create_success1(self):
@@ -31,6 +37,8 @@ class RepositoryInitTestCase(unittest.TestCase):
 
     def test_create_success2(self):
         result = Storage.create(join(self.repodir, 'test'), True)
+        self.assert_(result, 'Storage not created')
+        result = Storage.create(join(self.repodir, 'test2', 'deeper'), True)
         self.assert_(result, 'Storage not created')
 
     def test_init_success(self):
@@ -77,6 +85,16 @@ class SandboxTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.repodir)
 
+    def _demo(self):
+        self.sandbox.add_file_content('file1', self.files[0])
+        self.sandbox.add_file_content('file2', self.files[0])
+        self.sandbox.commit('added1', 'user1 <1@example.com>')
+        self.sandbox.add_file_content('file1', self.files[1])
+        self.sandbox.commit('added2', 'user2 <2@example.com>')
+        self.sandbox.add_file_content('file2', self.files[1])
+        self.sandbox.add_file_content('file3', self.files[0])
+        self.sandbox.commit('added3', 'user3 <3@example.com>')
+
     def test_add_file_content_fail(self):
         # tests for exceptions raised by addition of file content.
         # this resolves to full path for failure
@@ -87,7 +105,7 @@ class SandboxTestCase(unittest.TestCase):
         invalidpath2 = join('a', 'b', pd, pd, pd, 'invalidpath')
         paths = (elsewhere, outside, invalidpath, invalidpath2,)
         for i in paths:
-            self.assertRaises(ValueError, self.sandbox.add_file_content, i, '')
+            self.assertRaises(PathInvalid, self.sandbox.add_file_content, i, '')
 
     def test_add_file_content_success(self):
         # testing adding of file.
@@ -131,12 +149,12 @@ class SandboxTestCase(unittest.TestCase):
 
     def test_mkdir(self):
         # invalid parent path
-        self.assertRaises(ValueError, self.sandbox.mkdir, join(os.pardir, '1'))
+        self.assertRaises(PathInvalid, self.sandbox.mkdir, join(os.pardir, '1'))
 
         # outside repo
         fakedir = tempfile.mkdtemp()
-        self.assertRaises(ValueError, self.sandbox.mkdir, fakedir)
-        shutil.rmtree(fakedir)
+        self.assertRaises(PathInvalid, self.sandbox.mkdir, fakedir)
+        os.rmdir(fakedir)
 
         self.assert_(self.sandbox.mkdir('1'))
         self.assert_(self.sandbox.mkdir(join('1', '2')))
@@ -190,7 +208,7 @@ class SandboxTestCase(unittest.TestCase):
         ps = os.pathsep
         self.sandbox.add_file_content('file1', self.files[0])
         # destination not in repo
-        self.assertRaises(ValueError,
+        self.assertRaises(PathInvalid,
                 self.sandbox.rename, 'file1', join(pd, 'move1'))
         # invalid type for dest
         self.assertRaises(TypeError,
@@ -200,12 +218,12 @@ class SandboxTestCase(unittest.TestCase):
 
         # can't overwrite file
         self.sandbox.add_file_content('move1', self.files[0])
-        self.assertRaises(ValueError,
+        self.assertRaises(PathNotDir,
                 self.sandbox.rename, ['file1'], 'move1')
         self.sandbox.add_file_content('file2', self.files[0])
-        self.assertRaises(ValueError,
+        self.assertRaises(PathExists,
                 self.sandbox.rename, ['file1', 'file2'], 'move1')
-        self.assertRaises(ValueError,
+        self.assertRaises(PathInvalid,
                 self.sandbox.rename, ['file1', 'file2'],
                 join('move1', 'move2'))
         # no valid source
