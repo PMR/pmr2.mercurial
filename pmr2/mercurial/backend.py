@@ -2,6 +2,7 @@ import os
 import ConfigParser
 from cStringIO import StringIO
 from mercurial import ui, hg, revlog, demandimport, cmdutil, archival
+from mercurial.i18n import _
 
 # XXX exists in Mercurial 0.9.5
 from mercurial.commands import docopy
@@ -53,6 +54,11 @@ def _t(name, **kw):
     kw[''] = name
     return kw
 
+def _hgweb(repo):
+    hw = hgweb(repo)
+    hw.t = _t
+    return hw
+
 
 class Storage(object):
     """\ 
@@ -88,10 +94,6 @@ class Storage(object):
         self._ui.readconfig(os.path.join(self._path, '.hg', 'hgrc'))
         try:
             self._repo = hg.repository(self._ui, self._path)
-            self._hgweb = hgweb(self._repo)
-            self._hgweb.t = _t
-            # XXX need to make this settable
-            self._hgweb.maxchanges = 10
         except RepoError:
             # Repository initializing error.
             # XXX should include original traceback
@@ -137,12 +139,12 @@ class Storage(object):
         according to dirlist.
         """
 
-        if changeid is None:
-            changeid = self._repo.dirstate.branch()
         try:
             self._ctx = self._repo.changectx(changeid)
         except RepoError:
             self._ctx = None
+            if changeid is None:
+                self._ctx = self._repo.changectx('tip')
         return self._ctx
 
     def clone(self, dest, rev=None, update=True):
@@ -202,10 +204,14 @@ class Storage(object):
         interface.
         """
 
+        hw = _hgweb(self._repo)
+        # XXX need to make this settable
+        hw.maxchanges = 10
+
         ctx = self._changectx(rev)
         if ctx is None:
             raise RevisionNotFound('revision %s not found' % rev)
-        return self._hgweb.changelog(ctx)
+        return hw.changelog(ctx)
 
     def manifest(self, rev=None, path=''):
         """\
@@ -217,10 +223,12 @@ class Storage(object):
         interface.
         """
 
+        hw = _hgweb(self._repo)
+
         ctx = self._changectx(rev)
         if ctx is None:
             raise RevisionNotFound('revision %s not found' % rev)
-        return self._hgweb.manifest(ctx, path)
+        return hw.manifest(ctx, path)
 
     @property
     def output(self):
@@ -326,7 +334,7 @@ class Sandbox(Storage):
         result = self._repo.commit([], message, user, '')
         # remaining parmas: files, message, user, date, match function
         if result is not None:
-            # update to the new context
+            # we have new context
             self._changectx(result)
         return result
 
@@ -350,6 +358,56 @@ class Sandbox(Storage):
             raise PathExists('cannot create directory; '
                                     'path already exists')
         return True
+
+    def pull(self, source='default', update=True):
+        """\
+        Pull new revisions from source.
+
+        source -
+            if value is 'default', the default source of this repo will 
+            be used.
+
+            Default: 'default'
+        update -
+            if True, this sandbox will be updated to the latest data
+            that was pulled, if possible.
+
+        return value is a number of total heads generated from the pull.
+
+        0 = no changes
+        1 = updated
+        >1 = merge will be required, no automatic update
+        """
+
+        # not using another Storage because localrepo.addchangegroup
+        # appends output to its ui, so the 'other' repo must be
+        # created using the ui belonging to this object.
+        if not isinstance(source, basestring):
+            raise TypeError('source must be a string')
+            # pull from main repo only.
+        # XXX could implement pull up to specific revs
+        source, revs, checkout = hg.parseurl(source, [])
+        if source == 'default':
+            raise RepoNotFound('no suitable repository found')
+        other = hg.repository(self._ui, source)
+        self._ui.status('pulling from %s\n' % (source))
+        modheads = self._repo.pull(other, revs)
+
+        if update:
+            if modheads <= 1 or checkout:
+                hg.update(self._repo, checkout)
+                self._changectx()
+            else:
+                self._ui.status(_("not updating, since new heads added\n"))
+
+        return modheads
+
+    def push(self, dest=None):
+        """\
+        Push changes into destination.
+
+        If destination is none, the source of this repo will be used.
+        """
 
     def remove(self, source):
         """\
@@ -439,7 +497,7 @@ class Sandbox(Storage):
                 names = []
                 for abs, rel, exact in copied:
                     if ui.verbose or not exact:
-                        ui.status('removing %s\n' % rel)  # removed _
+                        ui.status(_('removing %s\n') % rel)
                     names.append(abs)
                 if not opts.get('dry_run'):
                     repo.remove(names, True)
@@ -464,5 +522,9 @@ class Sandbox(Storage):
         Returns a dictionary of the list of files.
         """
 
+        # get back to latest working copy because this is what we want.
+        ctx = self._changectx()
         st = self._repo.status(list_ignored=True, list_clean=True)
-        return self._hgweb.status(self._ctx, path, st)
+
+        hw = _hgweb(self._repo)
+        return hw.status(self._ctx, path, st)

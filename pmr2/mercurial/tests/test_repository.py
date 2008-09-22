@@ -60,10 +60,11 @@ class RepositoryTestCase(unittest.TestCase):
         shutil.rmtree(self.repodir)
 
     def test_changectx(self):
-        # do we need this test?
-        ctx = self.workspace._changectx('tip')  # as 'default' not exist yet
-        self.assertNotEqual(ctx, None, msg='failed to get context')
-        self.assertEqual(ctx.branch(), 'default', msg='unexpected context')
+        ctx0 = self.workspace._changectx('tip')  # as 'default' not exist yet
+        ctx1 = self.workspace._changectx()  # should also get tip
+        self.assertEqual(ctx0.node(), ctx1.node())
+        self.assertNotEqual(ctx0, None, msg='failed to get context')
+        self.assertEqual(ctx0.branch(), 'default', msg='unexpected context')
 
     def test_manifest_empty(self):
         # empty manifest
@@ -221,6 +222,16 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(log[2]['desc'], 'added1')
         self.assertEqual(log[2]['author'], 'user1 <1@example.com>')
 
+    def test_manifest(self):
+        self._demo()
+        n0 = str(self.sandbox.manifest().next()['node'])
+        c0 = self.sandbox._ctx.node()
+        self._demo()
+        n1 = str(self.sandbox.manifest().next()['node'])
+        c1 = self.sandbox._ctx.node()
+        self.assertNotEqual(c0, c1)
+        self.assertNotEqual(n0, n1, 'hgweb not updated')
+
     def test_mkdir(self):
         # invalid parent path
         self.assertRaises(PathInvalid, self.sandbox.mkdir, join(os.pardir, '1'))
@@ -242,6 +253,11 @@ class SandboxTestCase(unittest.TestCase):
         self.assert_(os.path.isdir(join(self.repodir, join('1', '2'))))
         self.assert_(os.path.isdir(join(self.repodir, join('3', '2'))))
 
+    def test_pull_failure(self):
+        self._demo()
+        # fail on no valid source.
+        self.assertRaises(RepoNotFound, self.sandbox.pull)
+
     def test_pull_success(self):
         # Testing pulling
         self._demo()
@@ -255,15 +271,40 @@ class SandboxTestCase(unittest.TestCase):
         source.commit('added4', 'user4 <4@example.com>')
 
         # pull the new stuff from source to target
-        target.pull(source._path)
+        heads = target.pull(source._path)
+        self.assertEqual(heads, 1)
+        # should automatically update working directory.
+        self.assert_(os.path.exists(join(target._path, 'file4')),
+                     'target working dir not updated')
 
         # reinitialize source
         m0 = source.manifest().next()['node']
         m1 = target.manifest().next()['node']
         self.assertEqual(m0, m1, 'commit id mismatch')
 
-        n0 = source._ctx.node()
-        n1 = target._ctx.node()
+        source.add_file_content('file1', 'source')
+        source.add_file_content('file2', 'add')
+        source.add_file_content('newsource', 'add')
+        source.commit('sourceadd', 'user4 <4@example.com>')
+
+        target.add_file_content('file1', 'target')
+        target.add_file_content('file2', 'add')
+        target.commit('targetadd', 'user4 <4@example.com>')
+
+        heads = target.pull(source._path)
+
+        t = open(join(target._path, 'file1')).read()
+        self.assertEqual(t, 'target', 'target working dir overwritten!')
+        self.assert_(not os.path.exists(join(target._path, 'newsource')))
+
+        self.assert_(heads > 1)
+
+        m2 = source.manifest().next()['node']
+        m3 = target.manifest().next()['node']
+        self.assertNotEqual(m2, m3) 
+        self.assertNotEqual(m1, m3)  # it really should have been updated.
+        self.assertNotEqual(m0, m2)  # it really should have been updated.
+
 
     def test_status(self):
         self.sandbox.add_file_content('file1', self.files[0])

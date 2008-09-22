@@ -12,3 +12,7 @@ class PathExists(PathInvalid):
 
 class RevisionNotFound(ValueError):
     """revision not found"""
+
+
+class RepoNotFound(ValueError):
+    """repository not found"""
