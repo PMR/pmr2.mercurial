@@ -135,7 +135,7 @@ class SandboxTestCase(unittest.TestCase):
         # depends on manifest working
 
         self._demo()
-        dest = [join(self.testdir, str(i)) for i in xrange(3)]
+        dest = [join(self.testdir, str(i)) for i in xrange(4)]
         self.sandbox.clone(dest[0])
         repo0 = Storage(dest[0])
         
@@ -146,7 +146,13 @@ class SandboxTestCase(unittest.TestCase):
         repo1 = Storage(dest[1])
         m0 = repo0.manifest().next()['node']
         m1 = repo1.manifest().next()['node']
-        self.assertEqual(m0, m1)
+        self.assertEqual(m0, m1, 'revision mismatch between clone')
+
+        # validate working copy is cloned properly.
+        f0 = open(join(repo0._path, 'file3')).read()
+        f1 = open(join(repo1._path, 'file3')).read()
+        self.assertEqual(f0, f1,
+                'file content in working copy mismatch between clone')
 
         # definitely not an existing rev
         self.assertRaises(RevisionNotFound, repo1.clone, dest[2], ['zzz'])
@@ -156,6 +162,20 @@ class SandboxTestCase(unittest.TestCase):
         repo1.clone(dest[2], node)
         repo2 = Storage(dest[2])
         self.assertEqual(repo2._repo.changelog.count(), 2)
+        #self.sandbox.add_file_content('file1', self.files[1])  # rev1
+        ff = open(join(repo2._path, 'file1')).read()
+        self.assertEqual(ff, self.files[1],
+                'file content in working copy mismatch between clone')
+        #self.sandbox.add_file_content('file2', self.files[0])  # rev0
+        ff = open(join(repo2._path, 'file2')).read()
+        self.assertEqual(ff, self.files[0],
+                'file content in working copy mismatch between clone')
+
+        # test no update
+        repo1.clone(dest[3], node, update=False)
+        repo3 = Storage(dest[3])
+        # file should not exist.
+        self.assert_(not os.path.exists(join(repo3._path, 'file1')))
 
     def test_commit_fail(self):
         # commit failing due to missing required values
@@ -166,10 +186,15 @@ class SandboxTestCase(unittest.TestCase):
     def test_commit_success(self):
         self.sandbox.add_file_content('file1', self.files[0])
         self.sandbox.commit(self.msg, self.user)
+        node1 = self.sandbox._ctx.node()
+        self.sandbox.add_file_content('file1', self.files[1])
+        self.sandbox.commit(self.msg, self.user)
+        node2 = self.sandbox._ctx.node()
         # private
         status = statdict(self.sandbox._repo.status(
                 list_ignored=True, list_clean=True))
         self.assertEqual(status['clean'], ['file1'])
+        self.assertNotEqual(node1, node2, 'internal context not updated')
 
     def test_file_modification(self):
         # testing file adding features
@@ -214,8 +239,31 @@ class SandboxTestCase(unittest.TestCase):
         # new nested
         self.assert_(self.sandbox.mkdir(join('3', '2', '2')))
 
-        self.assert_(os.path.isdir(os.path.join(self.repodir, join('1', '2'))))
-        self.assert_(os.path.isdir(os.path.join(self.repodir, join('3', '2'))))
+        self.assert_(os.path.isdir(join(self.repodir, join('1', '2'))))
+        self.assert_(os.path.isdir(join(self.repodir, join('3', '2'))))
+
+    def test_pull_success(self):
+        # Testing pulling
+        self._demo()
+        dest = [join(self.testdir, str(i)) for i in xrange(3)]
+        self.sandbox.clone(dest[0])
+        source = self.sandbox
+        target = Sandbox(dest[0])
+
+        source.add_file_content('file3', 'weird new content for file3')
+        source.add_file_content('file4', 'file4 new')
+        source.commit('added4', 'user4 <4@example.com>')
+
+        # pull the new stuff from source to target
+        target.pull(source._path)
+
+        # reinitialize source
+        m0 = source.manifest().next()['node']
+        m1 = target.manifest().next()['node']
+        self.assertEqual(m0, m1, 'commit id mismatch')
+
+        n0 = source._ctx.node()
+        n1 = target._ctx.node()
 
     def test_status(self):
         self.sandbox.add_file_content('file1', self.files[0])

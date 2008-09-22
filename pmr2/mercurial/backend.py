@@ -145,7 +145,7 @@ class Storage(object):
             self._ctx = None
         return self._ctx
 
-    def clone(self, dest, rev=None):
+    def clone(self, dest, rev=None, update=True):
         """\
         Clones this repository to target destination `dest'.
 
@@ -182,7 +182,7 @@ class Storage(object):
                 raise RevisionNotFound('revision %s not found' % rev)
 
         clone_result = hg.clone(self._ui, source=self._path, dest=dest, 
-                rev=rev, update=True)
+                rev=rev, update=update)
         repo, repo_clone = clone_result
         # since it did get reinitialized.
         self._repo = repo
