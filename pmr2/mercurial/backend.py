@@ -189,7 +189,7 @@ class Storage(object):
         # since it did get reinitialized.
         self._repo = repo
 
-    def log(self, rev=None, branch=None, limit=0):
+    def log(self, rev=None, branch=None, limit=None):
         """\
         This method returns the history of the repository.
 
@@ -205,8 +205,9 @@ class Storage(object):
         """
 
         hw = _hgweb(self._repo)
-        # XXX need to make this settable
-        hw.maxchanges = 10
+        if limit is None:
+            limit = 10
+        hw.maxchanges = limit
 
         ctx = self._changectx(rev)
         if ctx is None:
@@ -389,6 +390,7 @@ class Sandbox(Storage):
         source, revs, checkout = hg.parseurl(source, [])
         if source == 'default':
             raise RepoNotFound('no suitable repository found')
+
         other = hg.repository(self._ui, source)
         self._ui.status('pulling from %s\n' % (source))
         modheads = self._repo.pull(other, revs)
@@ -402,12 +404,48 @@ class Sandbox(Storage):
 
         return modheads
 
-    def push(self, dest=None):
+    def push(self, dest=None, rev=None, force=False):
         """\
         Push changes into destination.
 
         If destination is none, the source of this repo will be used.
+
+        If revision is not specified, the current working dir will be
+        pushed.  If this spawns a new head, this operation must be
+        forced.
+
+        Forcing will have the side effect of creating a new branch, and
+        it may not be desirable.
+
+        By default, no remote branch will be created.
         """
+
+        # find parents
+        # if there are two parents, take the first one,
+        #   (ui should warn users about uncommitted merge/confirmation)
+        # if not force, do it and see if head shows up
+
+        if rev is None:
+            rev = [self._repo.lookup('.')]
+
+        dest, revs, checkout = hg.parseurl(
+            self._ui.expandpath(dest or 'default-push', 
+                                dest or 'default'), rev)
+
+        if dest in ('default', 'default-push',):
+            raise RepoNotFound('no suitable target found')
+        other = hg.repository(self._ui, dest)
+        self._ui.status('pushing to %s\n' % (dest))
+        if revs:
+            revs = [self._repo.lookup(rev) for rev in revs]
+        r = self._repo.push(other, force, revs=revs)
+        # check to see if this revision is present on destination
+        # XXX assuming other is localrepo
+        try:
+            result = other.lookup(revs[0])
+        except:
+            result = None
+        return result is not None
 
     def remove(self, source):
         """\

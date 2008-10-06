@@ -213,7 +213,7 @@ class SandboxTestCase(unittest.TestCase):
 
     def test_log(self):
         self._demo()
-        loggen = self.sandbox.log(limit=-1)
+        loggen = self.sandbox.log()
         log = [i for i in loggen.next()['entries']()]
         # not really needing a test here, since currently it's based
         # on the hgweb directly.
@@ -305,6 +305,54 @@ class SandboxTestCase(unittest.TestCase):
         self.assertNotEqual(m1, m3)  # it really should have been updated.
         self.assertNotEqual(m0, m2)  # it really should have been updated.
 
+    def test_push_failure(self):
+        self._demo()
+        # push nowhere
+        self.assertRaises(RepoNotFound, self.sandbox.push)
+
+        dest = [join(self.testdir, str(i)) for i in xrange(3)]
+        self.sandbox.clone(dest[0])
+        source = self.sandbox
+        target = Sandbox(dest[0])
+
+        source.add_file_content('file1', 'source')
+        source.add_file_content('file2', 'add')
+        source.add_file_content('newsource', 'add')
+        source.commit('sourceadd', 'user4 <4@example.com>')
+
+        target.add_file_content('file1', 'target')
+        target.add_file_content('file2', 'add')
+        target.commit('targetadd', 'user4 <4@example.com>')
+
+        # multiple heads.
+        result = target.push()
+        self.assert_(not result)
+
+        # forcing should work
+        result = target.push(force=True)
+        self.assert_(result)
+
+    def test_push_success(self):
+        self._demo()
+        # push nowhere
+        self.assertRaises(RepoNotFound, self.sandbox.push)
+
+        dest = [join(self.testdir, str(i)) for i in xrange(3)]
+        self.sandbox.clone(dest[0])
+        source = self.sandbox
+        target = Sandbox(dest[0])
+
+        target.add_file_content('file1', 'source')
+        target.add_file_content('file2', 'add')
+        target.add_file_content('newsource', 'add')
+        target.commit('tar1', 'user4 <4@example.com>')
+
+        target.add_file_content('file1', 'newer')
+        target.add_file_content('file2', 'adding')
+        target.commit('tar2', 'user4 <4@example.com>')
+
+        result = target.push()
+        self.assert_(result)
 
     def test_status(self):
         self.sandbox.add_file_content('file1', self.files[0])
