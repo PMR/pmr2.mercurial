@@ -5,7 +5,8 @@ from mercurial import ui, hg, revlog, demandimport, cmdutil, util
 from mercurial.i18n import _
 
 # modified hgweb
-from hgweb_ext import hgweb_ext as hgweb
+from ext import hgweb_ext as hgweb
+from ext import hg_copy, hg_rename
 
 # Mercurial exceptions to catch
 from mercurial.repo import RepoError
@@ -542,16 +543,17 @@ class Sandbox(Storage):
         to rename source into dest.
 
         source -
-            either a string of a list of strings
+            either a string of a list of strings that are valid paths.
+            invalid paths will be silently ignored.
         dest -
             must be a string.
-        with the option 'force' enabled.
 
-        Return values are the number of errors, and a list of files
-        that have been copied if the call was successful.
+        There are two return values.
+        First value is a list of tuples of files and the reason rename
+        failed for it.  Invalid paths will not be here as they are 
+        silently ignored.
+        Second value is a list of files that were moved.
         """
-        # FIXME exceptions here will need to be specified for the 
-        # generic interface when migrated.
 
         # param type check
         source = self._source_check(source)
@@ -559,18 +561,17 @@ class Sandbox(Storage):
             # XXX can this really work with unicode?  below also
             raise TypeError('dest must be of type string')
 
+        # remove dupes
+        origin = set(source)
         # source validation + param type check
-        pats = self._filter_paths(source)
-        if not pats:
-            raise ValueError('no valid source found')
-
+        pats = self._filter_paths(origin)
         # destination.
         f_dest = self._fullpath(dest)
 
         c = len(pats)
         if c == 0:
-            # no safe files
-            return source, []
+            # no valid source, do nothing
+            return [], []
         if c == 1:
             if os.path.exists(f_dest) and not os.path.isdir(f_dest):
                 raise PathNotDir(
@@ -582,12 +583,11 @@ class Sandbox(Storage):
             # make path if source files > 1 as required by docopy
             self.mkdir(f_dest)
 
-        perrs = len(source) - c  # number of invalid source
-        pats.append(f_dest)  # add destination for Mercurial's docopy.
+        pats.append(f_dest)  # add destination pattern list
 
         opts = {'force': force, 'after': 0}
         errors, success = hg_rename(self._ui, self._repo, *pats, **opts)
-        #errors += perrs
+        errors.sort()
         return errors, success
 
     def status(self, path=''):
@@ -612,231 +612,3 @@ class Sandbox(Storage):
 # - tagging: should be done in sandbox (to create .hgtag)
 # - merging: this must be done more comprehensively than prototype
 # - forest snapshot: it was more a hack
-
-# XXX modified commands.rename from mercurial 1.0.2
-def hg_rename(ui, repo, *pats, **opts):
-    wlock = repo.wlock(False)
-    try:
-        return hg_copy(ui, repo, pats, opts, rename=True)
-    finally:
-        del wlock
-
-# XXX modified cmdutil.copy from mercurial 1.0.2
-# changes to return a list of files moved.
-
-def hg_copy(ui, repo, pats, opts, rename=False):
-    # called with the repo lock held
-    #
-    # hgsep => pathname that uses "/" to separate directories
-    # ossep => pathname that uses os.sep to separate directories
-    cwd = repo.getcwd()
-    targets = {}
-    after = opts.get("after")
-    dryrun = opts.get("dry_run")
-    errormsg = []
-
-    def walkpat(pat):
-        srcs = []
-        for tag, abs, rel, exact in cmdutil.walk(repo, [pat], opts, globbed=True):
-            state = repo.dirstate[abs]
-            if state in '?r':
-                if exact and state == '?':
-                    ui.warn(_('%s: not copying - file is not managed\n') % rel)
-                    errormsg.append((abs, 
-                            'not copying - file is not managed',))
-                if exact and state == 'r':
-                    ui.warn(_('%s: not copying - file has been marked for'
-                              ' remove\n') % rel)
-                    errormsg.append((abs, 
-                            'not copying - file has been marked for remove',))
-                continue
-            # abs: hgsep
-            # rel: ossep
-            srcs.append((abs, rel, exact))
-        return srcs
-
-    # abssrc: hgsep
-    # relsrc: ossep
-    # otarget: ossep
-    def copyfile(abssrc, relsrc, otarget, exact):
-        abstarget = util.canonpath(repo.root, cwd, otarget)
-        reltarget = repo.pathto(abstarget, cwd)
-        target = repo.wjoin(abstarget)
-        src = repo.wjoin(abssrc)
-        state = repo.dirstate[abstarget]
-
-        # check for collisions
-        prevsrc = targets.get(abstarget)
-        if prevsrc is not None:
-            ui.warn(_('%s: not overwriting - %s collides with %s\n') %
-                    (reltarget, repo.pathto(abssrc, cwd),
-                     repo.pathto(prevsrc, cwd)))
-            # XXX need to provide meaningful error message, find out what
-            # prevsrc looks like
-            errormsg.append((abssrc, '',))
-            return
-
-        # check for overwrites
-        exists = os.path.exists(target)
-        if (not after and exists or after and state in 'mn'):
-            if not opts['force']:
-                ui.warn(_('%s: not overwriting - file exists\n') %
-                        reltarget)
-                errormsg.append((abssrc, 'destination exists',))
-                return
-
-        if after:
-            if not exists:
-                return
-        elif not dryrun:
-            try:
-                if exists:
-                    os.unlink(target)
-                targetdir = os.path.dirname(target) or '.'
-                if not os.path.isdir(targetdir):
-                    os.makedirs(targetdir)
-                util.copyfile(src, target)
-            except IOError, inst:
-                if inst.errno == errno.ENOENT:
-                    ui.warn(_('%s: deleted in working copy\n') % relsrc)
-                    errormsg.append((abssrc, 'deleted in working copy',))
-                else:
-                    ui.warn(_('%s: cannot copy - %s\n') %
-                            (relsrc, inst.strerror))
-                    errormsg.append((abssrc, 'cannot copy - %s' % inst.strerror,))
-                    return True # report a failure
-
-        if ui.verbose or not exact:
-            action = rename and "moving" or "copying"
-            ui.status(_('%s %s to %s\n') % (action, relsrc, reltarget))
-
-        targets[abstarget] = abssrc
-
-        # fix up dirstate
-        origsrc = repo.dirstate.copied(abssrc) or abssrc
-        if abstarget == origsrc: # copying back a copy?
-            if state not in 'mn' and not dryrun:
-                repo.dirstate.normallookup(abstarget)
-        else:
-            if repo.dirstate[origsrc] == 'a':
-                if not ui.quiet:
-                    ui.warn(_("%s has not been committed yet, so no copy "
-                              "data will be stored for %s.\n")
-                            % (repo.pathto(origsrc, cwd), reltarget))
-                if abstarget not in repo.dirstate and not dryrun:
-                    repo.add([abstarget])
-            elif not dryrun:
-                repo.copy(origsrc, abstarget)
-
-        if rename and not dryrun:
-            #import pdb;pdb.set_trace()
-            repo.remove([abssrc], not after)
-
-    # pat: ossep
-    # dest ossep
-    # srcs: list of (hgsep, hgsep, ossep, bool)
-    # return: function that takes hgsep and returns ossep
-    def targetpathfn(pat, dest, srcs):
-        if os.path.isdir(pat):
-            abspfx = util.canonpath(repo.root, cwd, pat)
-            abspfx = util.localpath(abspfx)
-            if destdirexists:
-                striplen = len(os.path.split(abspfx)[0])
-            else:
-                striplen = len(abspfx)
-            if striplen:
-                striplen += len(os.sep)
-            res = lambda p: os.path.join(dest, util.localpath(p)[striplen:])
-        elif destdirexists:
-            res = lambda p: os.path.join(dest,
-                                         os.path.basename(util.localpath(p)))
-        else:
-            res = lambda p: dest
-        return res
-
-    # pat: ossep
-    # dest ossep
-    # srcs: list of (hgsep, hgsep, ossep, bool)
-    # return: function that takes hgsep and returns ossep
-    def targetpathafterfn(pat, dest, srcs):
-        if util.patkind(pat, None)[0]:
-            # a mercurial pattern
-            res = lambda p: os.path.join(dest,
-                                         os.path.basename(util.localpath(p)))
-        else:
-            abspfx = util.canonpath(repo.root, cwd, pat)
-            if len(abspfx) < len(srcs[0][0]):
-                # A directory. Either the target path contains the last
-                # component of the source path or it does not.
-                def evalpath(striplen):
-                    score = 0
-                    for s in srcs:
-                        t = os.path.join(dest, util.localpath(s[0])[striplen:])
-                        if os.path.exists(t):
-                            score += 1
-                    return score
-
-                abspfx = util.localpath(abspfx)
-                striplen = len(abspfx)
-                if striplen:
-                    striplen += len(os.sep)
-                if os.path.isdir(os.path.join(dest, os.path.split(abspfx)[1])):
-                    score = evalpath(striplen)
-                    striplen1 = len(os.path.split(abspfx)[0])
-                    if striplen1:
-                        striplen1 += len(os.sep)
-                    if evalpath(striplen1) > score:
-                        striplen = striplen1
-                res = lambda p: os.path.join(dest,
-                                             util.localpath(p)[striplen:])
-            else:
-                # a file
-                if destdirexists:
-                    res = lambda p: os.path.join(dest,
-                                        os.path.basename(util.localpath(p)))
-                else:
-                    res = lambda p: dest
-        return res
-
-
-    pats = util.expand_glob(pats)
-    if not pats:
-        raise util.Abort(_('no source or destination specified'))
-    if len(pats) == 1:
-        raise util.Abort(_('no destination specified'))
-    dest = pats.pop()
-    destdirexists = os.path.isdir(dest) and not os.path.islink(dest)
-    if not destdirexists:
-        if len(pats) > 1 or util.patkind(pats[0], None)[0]:
-            raise util.Abort(_('with multiple sources, destination must be an '
-                               'existing directory'))
-        if util.endswithsep(dest):
-            raise util.Abort(_('destination %s is not a directory') % dest)
-
-    tfn = targetpathfn
-    if after:
-        tfn = targetpathafterfn
-    copylist = []
-    for pat in pats:
-        srcs = walkpat(pat)
-        if not srcs:
-            continue
-        copylist.append((tfn(pat, dest, srcs), srcs))
-    if not copylist:
-        raise util.Abort(_('no files to copy'))
-
-    success = []
-    errors = 0
-    for targetpath, srcs in copylist:
-        for abssrc, relsrc, exact in srcs:
-            if copyfile(abssrc, relsrc, targetpath(abssrc), exact):
-                errors += 1
-            else:
-                success.append(abssrc)
-
-    # this is only reported if IOError happened.
-    #if errors:
-    #    ui.warn(_('(consider using --after)\n'))
-
-    return errormsg, success
-

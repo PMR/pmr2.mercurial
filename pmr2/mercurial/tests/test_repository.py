@@ -489,7 +489,7 @@ class SandboxTestCase(unittest.TestCase):
     def test_rename_file_failure(self):
 
         pd = os.pardir
-        ps = os.pathsep
+        ps = os.sep
         self.sandbox.add_file_content('file1', self.files[0])
         # destination not in repo
         self.assertRaises(PathInvalid,
@@ -510,10 +510,11 @@ class SandboxTestCase(unittest.TestCase):
         self.assertRaises(PathInvalid,
                 self.sandbox.rename, ['file1', 'file2'],
                 join('move1', 'move2'))
+
         # no valid source
-        # XXX meant to get to root
-        self.assertRaises(ValueError,
-                self.sandbox.rename, [ps + 'file1', ps + 'file2'], 'move2')
+        ff, ss = self.sandbox.rename([ps + 'file1', ps + 'file2'], 'move2')
+        self.assertEqual(len(ff), 0)
+        self.assertEqual(len(ss), 0)
 
     def test_remove_file_str(self):
         for i, x in enumerate(self.filelist):
@@ -667,32 +668,39 @@ class SandboxTestCase(unittest.TestCase):
         self.sandbox.commit(self.msg, self.user)
         errs, copied = self.sandbox.rename(['file1', 'file2', 'file3'], 'move1')
         self.assertEqual(len(errs), 0)
+        self.assertEqual(len(copied), 3)
+
+        # moving some back
         errs, copied = self.sandbox.rename(
             [
                 join('move1', 'file1'),
                 join('move1', 'file2'),
                 join('move2', 'file3'),
-            ],  # move2/file3
-            '',  # empty = root
+            ],
+            '',
         )
-        #self.assertEqual(errs, 1)
+        self.assertEqual(len(errs), 0)  # error silently ignored
+        self.assertEqual(len(copied), 2)
+
+        # not there anymore
         errs, copied = self.sandbox.rename(
             [
                 join('move1', 'file1'),
                 join('move1', 'file3'),
-            ],  # move2/file3
-            '',  # empty = root
+            ],
+            '',
         )
-        # XXX invalid paths dropped silently
-        #self.assertEqual(len(errs), 1)
-        self.assertEqual(len(errs), 0)
+        self.assertEqual(copied, join(['move1/file3']))
         self.sandbox.add_file_content('move1/file1', self.files[0])
         self.sandbox.add_file_content('move1/file2', self.files[0])
         self.sandbox.remove('file3')
         errs, copied = self.sandbox.rename(['file1', 'file2', 'file3'], 'move1')
-        #import pdb;pdb.set_trace()
-        # XXX invalid paths dropped silently
+        # file3 is now invalid, no error
+        # [move1/file1, move1/file2] both exists
         self.assertEqual(len(errs), 2)
+        # alphabetical
+        self.assertEqual(errs[0][0], 'file1')
+        self.assertEqual(errs[1][0], 'file2')
 
 def statdict(st):
     # build a stat dictionary
