@@ -6,6 +6,10 @@ class PathNotDir(PathInvalid):
     """path not a directory"""
 
 
+class PathNotFound(PathInvalid):
+    """path not found"""
+
+
 class PathExists(PathInvalid):
     """path exists"""
 

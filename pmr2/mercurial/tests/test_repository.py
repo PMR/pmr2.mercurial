@@ -65,6 +65,7 @@ class RepositoryTestCase(unittest.TestCase):
         self.assertEqual(ctx0.node(), ctx1.node())
         self.assertNotEqual(ctx0, None, msg='failed to get context')
         self.assertEqual(ctx0.branch(), 'default', msg='unexpected context')
+        self.assertRaises(RevisionNotFound, self.workspace._changectx, 'fail')
 
     def test_manifest_empty(self):
         # empty manifest
@@ -122,6 +123,10 @@ class SandboxTestCase(unittest.TestCase):
         add('file1', '1')
         add(join('d', 'file1',), 'in a dir')
         add(join('a', 'b', 'c', 'd', 'e', 'file1',), 'this is totally nested')
+
+    def test_branches(self):
+        self._demo()
+        self.assertEqual(self.sandbox.branches().keys(), ['default'])
 
     def test_clone_fail(self):
         # Testing clone down here because we need sandbox to create data
@@ -197,6 +202,10 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(status['clean'], ['file1'])
         self.assertNotEqual(node1, node2, 'internal context not updated')
 
+    def test_current_branch(self):
+        self._demo()
+        self.assertEqual('default', self.sandbox.current_branch())
+
     def test_file_modification(self):
         # testing file adding features
 
@@ -221,6 +230,19 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(log[0]['author'], 'user3 <3@example.com>')
         self.assertEqual(log[2]['desc'], 'added1')
         self.assertEqual(log[2]['author'], 'user1 <1@example.com>')
+
+    def test_file_failure(self):
+        self._demo()
+        self.assertRaises(PathNotFound, self.sandbox.file, path='file4')
+
+    def test_file_success(self):
+        self._demo()
+        log = [i for i in self.sandbox.log().next()['entries']()]
+        f = self.sandbox.file(path='file1').next()
+        self.assertEqual(f['raw'], self.files[1])
+        # older version
+        f = self.sandbox.file(rev=log[2]['node'], path='file1').next()
+        self.assertEqual(f['raw'], self.files[0])
 
     def test_manifest(self):
         self._demo()

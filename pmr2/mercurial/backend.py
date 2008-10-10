@@ -142,10 +142,15 @@ class Storage(object):
         try:
             self._ctx = self._repo.changectx(changeid)
         except RepoError:
-            self._ctx = None
+            #self._ctx = None
             if changeid is None:
                 self._ctx = self._repo.changectx('tip')
+            else:
+                raise RevisionNotFound('revision %s not found' % changeid)
         return self._ctx
+
+    def branches(self):
+        return self._repo.branchtags()
 
     def clone(self, dest, rev=None, update=True):
         """\
@@ -210,8 +215,6 @@ class Storage(object):
         hw.maxchanges = limit
 
         ctx = self._changectx(rev)
-        if ctx is None:
-            raise RevisionNotFound('revision %s not found' % rev)
         return hw.changelog(ctx)
 
     def manifest(self, rev=None, path=''):
@@ -227,9 +230,23 @@ class Storage(object):
         hw = _hgweb(self._repo)
 
         ctx = self._changectx(rev)
-        if ctx is None:
-            raise RevisionNotFound('revision %s not found' % rev)
         return hw.manifest(ctx, path)
+
+    def file(self, rev=None, path=''):
+        """\
+        Returns contents of file.
+        """
+
+        hw = _hgweb(self._repo)
+        ctx = self._changectx(rev)
+        try:
+            fctx = ctx.filectx(path)
+        except revlog.LookupError:
+            raise PathNotFound("path '%s' not found" % path)
+        return hw.filerevision(fctx)
+
+    def tags(self):
+        return self._repo.tags()
 
     @property
     def output(self):
@@ -338,6 +355,9 @@ class Sandbox(Storage):
             # we have new context
             self._changectx(result)
         return result
+
+    def current_branch(self):
+        return self._repo.dirstate.branch()
 
     def mkdir(self, dirname):
         """\
