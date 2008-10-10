@@ -18,5 +18,9 @@ class RevisionNotFound(ValueError):
     """revision not found"""
 
 
+class RepoEmpty(ValueError):
+    """repository empty"""
+
+
 class RepoNotFound(ValueError):
     """repository not found"""

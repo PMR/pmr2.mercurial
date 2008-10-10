@@ -8,6 +8,12 @@ pmr2.mercurial.egg-info/dependency_links.txt
 pmr2.mercurial.egg-info/entry_points.txt
 pmr2.mercurial.egg-info/namespace_packages.txt
 pmr2.mercurial.egg-info/not-zip-safe
+pmr2.mercurial.egg-info/paster_plugins.txt
 pmr2.mercurial.egg-info/requires.txt
 pmr2.mercurial.egg-info/top_level.txt
 pmr2/mercurial/__init__.py
+pmr2/mercurial/backend.py
+pmr2/mercurial/exceptions.py
+pmr2/mercurial/hgweb_ext.py
+pmr2/mercurial/tests/__init__.py
+pmr2/mercurial/tests/test_repository.py

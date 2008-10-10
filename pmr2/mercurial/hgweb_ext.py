@@ -1,16 +1,28 @@
 import os.path
 
 # needed for manifest/status method addon
+from mercurial import util
+from mercurial.context import filectx, workingfilectx
 import mercurial.hgweb.hgweb_mod
 from mercurial.hgweb.hgweb_mod import _up
 from mercurial.hgweb.common import get_mtime, staticfile, style_map, paritygen
 
 # not overriding builtin hex function like Mercurial does.
-from binascii import hexlify as hex_
+from binascii import hexlify
+
+from mercurial import demandimport
+demandimport.disable()
 
 __all__ = [
     'hgweb_ext',
 ]
+
+def hex_(data):
+    if data is None:
+        return ''  # XXX nullid prefered?
+    else:
+        return hexlify(data)
+
 
 class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
     """\
@@ -18,13 +30,15 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
     required to generate usable output from other Mercurial features.
     """
 
-    def status(self, ctx, path, st):
+    def status(self, tmpl, ctx, path, st):
         """\
         Based on hgweb.manifest, adapted to included features found in
         hg status.
 
         Initial parameters are the same as manifest.  New parameters:
 
+        ctx
+            - should be the workingctx
         st 
             - the tuple returned from repo.status
         """
@@ -35,27 +49,11 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
         )
         # status listing
         statlist = dict(zip(changetypes, st))
-        filelist = {}
+        filestatlist = {}
         for k, v in statlist.iteritems():
             for f in v:
-                filelist[f] = k
-
-        # We only want the items present in filelist but not in the
-        # manifest to be added to it (i.e. a non-overwriting update).
-        # get the manifestdict object generated from ctx.manifest().
-        mf_o = ctx.manifest()
-        # We need a copy from the original manifest instead of generating
-        # a new one from ctx.manifest() as that returns a reference to 
-        # actual data that can be polluted when manipulated.
-        mf = mf_o.copy()
-        # update a standard dict with required dicts in the order needed
-        # to generate the desired update dict.
-        d = {}
-        d.update(filelist)
-        d.update(mf)
-        # done.
-        mf.update(d)
-
+                filestatlist[f] = k
+        mf = ctx.manifest()
         node = ctx.node()
 
         files = {}
@@ -84,26 +82,15 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                 full, fnode = files[f]
                 if not fnode:
                     continue
-                # not only this, but it might be best to look for
-                # 'clean' from statlist instead.
-                if full in statlist['clean']:
-                    fctx = ctx.filectx(full)
-                    yield {"file": full,
-                           "parity": parity.next(),
-                           "basename": f,
-                           "date": fctx.changectx().date(),
-                           "size": fctx.size(),
-                           "permissions": mf.flags(full),
-                           }
-                else:
-                    yield {"file": full,
-                           "parity": parity.next(),
-                           "basename": f,
-                           # XXX we need some real data for this
-                           "date": (0, 0), #fctx.changectx().date(),
-                           "size": 1, #fctx.size(),
-                           "permissions": '', #mf.flags(full),
-                           } 
+                fctx = ctx.filectx(full)
+                yield {"file": full,
+                       "status": filestatlist[full],
+                       "parity": parity.next(),
+                       "basename": f,
+                       "date": fctx.changectx().date(),
+                       "size": fctx.size(),
+                       "permissions": mf.flags(full),
+                       }
 
         def dirlist(**map):
             fl = files.keys()
@@ -117,7 +104,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                        "path": "%s%s" % (abspath, f),
                        "basename": f[:-1]}
 
-        yield self.t("manifest",
+        return tmpl("status",
                      rev=ctx.rev(),
                      node=hex_(node),
                      path=abspath,
@@ -128,3 +115,99 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                      archives=[], # self.archivelist(hex_(node)),
                      tags=self.nodetagsdict(node),
                      branches=self.nodebranchdict(ctx))
+
+    def filecwd(self, tmpl, fctx):
+        """\
+        No change from Mercurial 1.0.2, except for usage of hexlify that
+        can take `None` as input.
+        """
+        f = fctx.path()
+        text = fctx.data()
+        fl = fctx.filelog()
+        n = fctx.filenode()
+        parity = paritygen(self.stripecount)
+
+        if util.binary(text):
+            mt = mimetypes.guess_type(f)[0] or 'application/octet-stream'
+            text = '(binary:%s)' % mt
+
+        def lines():
+            for lineno, t in enumerate(text.splitlines(1)):
+                yield {"line": t,
+                       "lineid": "l%d" % (lineno + 1),
+                       "linenumber": "% 6d" % (lineno + 1),
+                       "parity": parity.next()}
+
+        return tmpl("filerevision",
+                    file=f,
+                    path=_up(f),
+                    text=lines(),
+                    rev=fctx.rev(),
+                    node=hex_(fctx.node()),
+                    author=fctx.user(),
+                    date=fctx.date(),
+                    desc=fctx.description(),
+                    branch=self.nodebranchnodefault(fctx),
+                    parent=self.siblings(fctx.parents()),
+                    child=self.siblings(fctx.children()),
+                    rename=self.renamelink(fl, n),
+                    permissions=fctx.manifest().flags(f))
+
+    def filerevision(self, tmpl, fctx):
+        """\
+        Same as one in mercurial 1.0.2, with a modification that allows
+        passing in a working file context.
+        """
+
+        f = fctx.path()
+        text = fctx.data()
+        fl = fctx.filelog()
+        n = fctx.filenode()
+        parity = paritygen(self.stripecount)
+
+        if util.binary(text):
+            mt = mimetypes.guess_type(f)[0] or 'application/octet-stream'
+            text = '(binary:%s)' % mt
+
+        def lines():
+            for lineno, t in enumerate(text.splitlines(1)):
+                yield {"line": t,
+                       "lineid": "l%d" % (lineno + 1),
+                       "linenumber": "% 6d" % (lineno + 1),
+                       "parity": parity.next()}
+
+        # XXX might be better to override self.renamelink instead of
+        # making this conditional statement here.
+        # still need the hex_ method call.
+        if isinstance(fctx, workingfilectx):
+            return tmpl("filerevision",
+                        file=f,
+                        path=_up(f),
+                        text=lines(),
+                        rev=fctx.rev(),
+                        node=hex_(fctx.node()),
+                        author=fctx.user(),
+                        date=fctx.date(),
+                        desc=fctx.description(),
+                        branch=self.nodebranchnodefault(fctx),
+                        parent=self.siblings(fctx.parents()),
+                        child=self.siblings(fctx.children()),
+                        rename=[],  # XXX figure out how to derive this
+                        permissions=fctx.manifest().flags(f))
+
+        else:
+            return tmpl("filerevision",
+                        file=f,
+                        path=_up(f),
+                        text=lines(),
+                        rev=fctx.rev(),
+                        node=hex_(fctx.node()),
+                        author=fctx.user(),
+                        date=fctx.date(),
+                        desc=fctx.description(),
+                        branch=self.nodebranchnodefault(fctx),
+                        parent=self.siblings(fctx.parents()),
+                        child=self.siblings(fctx.children()),
+                        rename=self.renamelink(fl, n),
+                        permissions=fctx.manifest().flags(f))
+

@@ -1,1 +1,2 @@
 setuptools
+mercurial==1.0.2

@@ -69,9 +69,56 @@ class RepositoryTestCase(unittest.TestCase):
 
     def test_manifest_empty(self):
         # empty manifest
-        result = [i for i in self.workspace.manifest('tip')]
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['path'], '/')
+        self.assertRaises(RepoEmpty, self.workspace.manifest, 'tip')
+        self.assertRaises(PathNotFound, 
+                self.workspace.manifest, 'tip', path='no')
+
+
+class RepositorySandboxTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.testdir = tempfile.mkdtemp()
+        self.repodir = join(self.testdir, 'repodir')
+        Sandbox.create(self.repodir, True)
+
+        sandbox = Sandbox(self.repodir, ctx='tip')
+        self.path = dirname(__file__)
+        self.filelist = ['file1', 'file2', 'file3',]
+        self.files = [open(join(self.path, i)).read() for i in self.filelist]
+        self.msg = 'added some files'
+        self.user = 'Tester <test@example.com>'
+        sandbox.add_file_content('file1', self.files[0])
+        sandbox.add_file_content('file2', self.files[0])
+        sandbox.commit('added1', 'user1 <1@example.com>')
+        sandbox.add_file_content('file1', self.files[1])
+        sandbox.commit('added2', 'user2 <2@example.com>')
+        sandbox.add_file_content('file2', self.files[1])
+        sandbox.add_file_content('file3', self.files[0])
+        sandbox.commit('added3', 'user3 <3@example.com>')
+        self.repo = Storage(self.repodir, ctx='tip')
+
+    def tearDown(self):
+        shutil.rmtree(self.testdir)
+
+    def test_file(self):
+        log = [i for i in self.repo.log().next()['entries']()]
+        f = self.repo.file(path='file1')
+        self.assertEqual(f, self.files[1])
+        # older version
+        f = self.repo.file(rev=log[2]['node'], path='file1')
+        self.assertEqual(f, self.files[0])
+
+    def test_fileinfo_failure(self):
+        self.assertRaises(PathNotFound, self.repo.fileinfo, path='file4')
+
+    def test_fileinfo_success(self):
+        log = [i for i in self.repo.log().next()['entries']()]
+        f = self.repo.fileinfo(path='file1').next()
+        self.assertEqual(f['file'], 'file1')
+        # older version
+        f = self.repo.fileinfo(rev=log[2]['node'], path='file1').next()
+        self.assertEqual(f['file'], 'file1')
+        self.assertEqual(f['node'], log[2]['node'])
 
 
 class SandboxTestCase(unittest.TestCase):
@@ -206,6 +253,23 @@ class SandboxTestCase(unittest.TestCase):
         self._demo()
         self.assertEqual('default', self.sandbox.current_branch())
 
+    def test_file(self):
+        # this tests fetching of updated files.
+        self._demo()
+        self.sandbox.add_file_content('file3', self.files[1])
+        f = self.sandbox.file(path='file3')
+        self.assertEqual(f, self.files[1])
+
+    def test_fileinfo_failure(self):
+        self._demo()
+        self.assertRaises(PathNotFound, self.sandbox.fileinfo, path='file4')
+
+    def test_fileinfo_success(self):
+        self._demo()
+        self.sandbox.add_file_content('file1', self.files[2])
+        f = self.sandbox.fileinfo(path='file1').next()
+        self.assertEqual(f['file'], 'file1')
+
     def test_file_modification(self):
         # testing file adding features
 
@@ -230,19 +294,6 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(log[0]['author'], 'user3 <3@example.com>')
         self.assertEqual(log[2]['desc'], 'added1')
         self.assertEqual(log[2]['author'], 'user1 <1@example.com>')
-
-    def test_file_failure(self):
-        self._demo()
-        self.assertRaises(PathNotFound, self.sandbox.file, path='file4')
-
-    def test_file_success(self):
-        self._demo()
-        log = [i for i in self.sandbox.log().next()['entries']()]
-        f = self.sandbox.file(path='file1').next()
-        self.assertEqual(f['raw'], self.files[1])
-        # older version
-        f = self.sandbox.file(rev=log[2]['node'], path='file1').next()
-        self.assertEqual(f['raw'], self.files[0])
 
     def test_manifest(self):
         self._demo()
@@ -377,16 +428,41 @@ class SandboxTestCase(unittest.TestCase):
         self.assert_(result)
 
     def test_status(self):
+        # should not fail.
+        stat = [i for i in self.sandbox.status()]
+        fent = [i for i in stat[0]['fentries']()]
+        self.assertEqual(len(fent), 0)
+        self.assertEqual(stat[0][''], 'status')
+
         self.sandbox.add_file_content('file1', self.files[0])
         self.sandbox.add_file_content('file2', self.files[1])
+        self.sandbox.add_file_content('zzz/sleep', self.files[1])
         self.sandbox.commit(self.msg, self.user)
         self.sandbox.add_file_content('file2', self.files[2])
         self.sandbox.add_file_content('file3', self.files[2])
         stat = [i for i in self.sandbox.status()]
         fent = [i for i in stat[0]['fentries']()]
-        # XXX could use more validation here based on below
+        dent = [i for i in stat[0]['dentries']()]
+        # print '%s\n%s\n%s\n' % (stat, fent, dent)
+        self.assertEqual(len(fent), 3)
+        self.assertEqual(len(dent), 1)
+        self.assertEqual(fent[0]['file'], 'file1')
+        self.assertEqual(fent[0]['status'], 'clean')
+        self.assertEqual(fent[0]['size'], len(self.files[0]))
+        self.assertEqual(fent[1]['file'], 'file2')
+        self.assertEqual(fent[1]['status'], 'modified')
+        self.assertEqual(fent[1]['size'], len(self.files[2]))
+        self.assertEqual(fent[2]['file'], 'file3')
+        self.assertEqual(fent[2]['status'], 'added')
+        self.assertEqual(fent[2]['size'], len(self.files[2]))
+        self.assertEqual(dent[0]['path'], '/zzz/')
+
+        stat = [i for i in self.sandbox.status(path='zzz')]
+        fent = [i for i in stat[0]['fentries']()]
         # print '%s\n%s\n' % (stat, fent)
-        self.assertEqual(len(fent), 3, 'number of file entries != 3')
+        self.assertEqual(fent[0]['file'], 'zzz/sleep')
+        self.assertEqual(fent[0]['basename'], 'sleep')
+        self.assertEqual(fent[0]['status'], 'clean')
 
     def test_source_check(self):
         self.assertRaises(TypeError,

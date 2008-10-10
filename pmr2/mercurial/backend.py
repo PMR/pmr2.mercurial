@@ -5,15 +5,19 @@ from mercurial import ui, hg, revlog, demandimport, cmdutil, archival
 from mercurial.i18n import _
 
 # XXX exists in Mercurial 0.9.5
-from mercurial.commands import docopy
+try:
+    from mercurial.commands import docopy
+except:
+    pass
 
 # modified hgweb
 from hgweb_ext import hgweb_ext as hgweb
 
 # Mercurial exceptions to catch
-from mercurial.hg import RepoError
+from mercurial.repo import RepoError
 from mercurial.util import Abort
 from mercurial.lock import LockHeld
+from mercurial.hgweb.common import ErrorResponse
 
 from pmr2.mercurial.exceptions import *
 
@@ -49,10 +53,13 @@ class _ui(ui.ui):
 oldui = ui.ui
 ui.ui = _ui
 
+class _cwd:
+    """ placeholder value for current working dir """
+
 
 def _t(name, **kw):
     kw[''] = name
-    return kw
+    yield kw
 
 def _hgweb(repo):
     hw = hgweb(repo)
@@ -215,7 +222,7 @@ class Storage(object):
         hw.maxchanges = limit
 
         ctx = self._changectx(rev)
-        return hw.changelog(ctx)
+        return hw.changelog(_t, ctx)
 
     def manifest(self, rev=None, path=''):
         """\
@@ -225,25 +232,45 @@ class Storage(object):
         so the value return is actually an iterator, and the structure
         will likely change when this class is migrated to a common
         interface.
+
+        As per hgweb manifest, if there file listing is empty, exception
+        is raised - this includes a newly instantiated repository.  Use
+        Sandbox, and call the status method instead to get the contents.
         """
 
         hw = _hgweb(self._repo)
 
         ctx = self._changectx(rev)
-        return hw.manifest(ctx, path)
+        try:
+            return hw.manifest(_t, ctx, path)
+        except ErrorResponse:
+            # as we do have a valid context, and if path is empty...
+            if not path:
+                raise RepoEmpty('repository is empty')
+            else:
+                raise PathNotFound("path '%s' not found" % path)
 
-    def file(self, rev=None, path=''):
+    def _filectx(self, rev=None, path=None):
         """\
         Returns contents of file.
         """
+        if not path:
+            raise PathNotFound('path not found')
 
-        hw = _hgweb(self._repo)
         ctx = self._changectx(rev)
         try:
-            fctx = ctx.filectx(path)
+            return ctx.filectx(path)
         except revlog.LookupError:
             raise PathNotFound("path '%s' not found" % path)
-        return hw.filerevision(fctx)
+
+    def file(self, rev=None, path=None):
+        fctx = self._filectx(rev, path)
+        return fctx.data()
+
+    def fileinfo(self, rev=None, path=None):
+        hw = _hgweb(self._repo)
+        fctx = self._filectx(rev, path)
+        return hw.filerevision(_t, fctx)
 
     def tags(self):
         return self._repo.tags()
@@ -271,6 +298,18 @@ class Sandbox(Storage):
         #self.t = _t
         #self.stripecount = 1
         #self.hgweb.status = _status
+
+    def _changectx(self, changeid=None):
+        """\
+        Returns working context by default
+        """
+        # XXX attribute selection could use some work.
+
+        if changeid is _cwd:
+            self._ctx = self._repo.workingctx()
+            return self._ctx
+        else:
+            return Storage._changectx(self, changeid)
 
     def _fullpath(self, name):
         """\
@@ -358,6 +397,27 @@ class Sandbox(Storage):
 
     def current_branch(self):
         return self._repo.dirstate.branch()
+
+    def file(self, rev=_cwd, path=None):
+        """
+        Get the file in working directory using the working directory
+        context.
+        """
+
+        fctx = self._filectx(rev, path)
+        return fctx.data()
+
+    def fileinfo(self, rev=_cwd, path=None):
+        """
+        Get the fileinfo in working directory using the working 
+        directory context.
+        """
+
+        fctx = self._filectx(rev, path)
+        if rev is _cwd and path not in fctx.manifest():
+            raise PathNotFound("path '%s' not found" % path)
+        hw = _hgweb(self._repo)
+        return hw.filerevision(_t, fctx)
 
     def mkdir(self, dirname):
         """\
@@ -581,8 +641,14 @@ class Sandbox(Storage):
         """
 
         # get back to latest working copy because this is what we want.
-        ctx = self._changectx()
+        ctx = self._changectx(_cwd)
         st = self._repo.status(list_ignored=True, list_clean=True)
 
         hw = _hgweb(self._repo)
-        return hw.status(self._ctx, path, st)
+        return hw.status(_t, self._ctx, path, st)
+
+# XXX features missing compared to prototype in pmr2.hgpmr.repository
+# - archive: should be done via hgweb
+# - tagging: should be done in sandbox (to create .hgtag)
+# - merging: this must be done more comprehensively than prototype
+# - forest snapshot: it was more a hack
