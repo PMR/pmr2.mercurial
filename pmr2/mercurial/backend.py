@@ -61,11 +61,6 @@ def _t(name, **kw):
     kw[''] = name
     yield kw
 
-def _hgweb(repo):
-    hw = hgweb(repo)
-    hw.t = _t
-    return hw
-
 
 class Storage(object):
     """\ 
@@ -216,7 +211,7 @@ class Storage(object):
         interface.
         """
 
-        hw = _hgweb(self._repo)
+        hw = hgweb(self._repo)
         if limit is None:
             limit = 10
         hw.maxchanges = limit
@@ -238,7 +233,7 @@ class Storage(object):
         Sandbox, and call the status method instead to get the contents.
         """
 
-        hw = _hgweb(self._repo)
+        hw = hgweb(self._repo)
 
         ctx = self._changectx(rev)
         try:
@@ -268,7 +263,7 @@ class Storage(object):
         return fctx.data()
 
     def fileinfo(self, rev=None, path=None):
-        hw = _hgweb(self._repo)
+        hw = hgweb(self._repo)
         fctx = self._filectx(rev, path)
         return hw.filerevision(_t, fctx)
 
@@ -416,7 +411,7 @@ class Sandbox(Storage):
         fctx = self._filectx(rev, path)
         if rev is _cwd and path not in fctx.manifest():
             raise PathNotFound("path '%s' not found" % path)
-        hw = _hgweb(self._repo)
+        hw = hgweb(self._repo)
         return hw.filerevision(_t, fctx)
 
     def mkdir(self, dirname):
@@ -644,7 +639,7 @@ class Sandbox(Storage):
         ctx = self._changectx(_cwd)
         st = self._repo.status(list_ignored=True, list_clean=True)
 
-        hw = _hgweb(self._repo)
+        hw = hgweb(self._repo)
         return hw.status(_t, self._ctx, path, st)
 
 # XXX features missing compared to prototype in pmr2.hgpmr.repository
