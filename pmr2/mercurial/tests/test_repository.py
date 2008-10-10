@@ -660,6 +660,18 @@ class SandboxTestCase(unittest.TestCase):
             '',  # empty = root
         )
         self.assertEqual(errs, 1)
+        errs, copied = self.sandbox.rename(
+            [
+                join('move1', 'file1'),
+                join('move1', 'file3'),
+            ],  # move2/file3
+            '',  # empty = root
+        )
+        self.assertEqual(errs, 1)
+        self.sandbox.add_file_content('move1/file1', self.files[0])
+        self.sandbox.add_file_content('move1/file2', self.files[0])
+        errs, copied = self.sandbox.rename(['file1', 'file2', 'file3'], 'move1')
+        self.assertEqual(errs, 2)
 
 def statdict(st):
     # build a stat dictionary
