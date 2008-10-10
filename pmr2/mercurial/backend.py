@@ -1,14 +1,8 @@
 import os
 import ConfigParser
 from cStringIO import StringIO
-from mercurial import ui, hg, revlog, demandimport, cmdutil, archival
+from mercurial import ui, hg, revlog, demandimport, cmdutil, util
 from mercurial.i18n import _
-
-# XXX exists in Mercurial 0.9.5
-try:
-    from mercurial.commands import docopy
-except:
-    pass
 
 # modified hgweb
 from hgweb_ext import hgweb_ext as hgweb
@@ -558,9 +552,6 @@ class Sandbox(Storage):
         """
         # FIXME exceptions here will need to be specified for the 
         # generic interface when migrated.
-        # FIXME should use Mercurial 1.0.2 (1.0.0?) because the copy
-        # function provided will allow copy + remove for rename.  So
-        # there will be no need to implement copy separately here.
 
         # param type check
         source = self._source_check(source)
@@ -578,8 +569,8 @@ class Sandbox(Storage):
 
         c = len(pats)
         if c == 0:
-            # no safe files, length of source = # of errors.
-            return len(source), []
+            # no safe files
+            return source, []
         if c == 1:
             if os.path.exists(f_dest) and not os.path.isdir(f_dest):
                 raise PathNotDir(
@@ -594,32 +585,10 @@ class Sandbox(Storage):
         perrs = len(source) - c  # number of invalid source
         pats.append(f_dest)  # add destination for Mercurial's docopy.
 
-        # docopy required options.
-        opts = {'force': 1, 'after': 0}
-
-        def rename(ui, repo):
-            # copied from mercurial.commands.rename (0.9.5)
-            # slightly modified, see below
-            wlock = repo.wlock(False)
-            try:
-                errs, copied = docopy(ui, repo, pats, opts)
-                names = []
-                for abs, rel, exact in copied:
-                    if ui.verbose or not exact:
-                        ui.status(_('removing %s\n') % rel)
-                    names.append(abs)
-                if not opts.get('dry_run'):
-                    repo.remove(names, True)
-                return errs, copied  # also return copied
-            finally:
-                del wlock
-
-        # XXX this can raise hg specific exceptions!
-        # FIXME for the standardized library, common exception
-        # classes independent from specific libraries must be used.
-        errs, copied = rename(self._ui, self._repo)
-        errs += perrs
-        return errs, copied
+        opts = {'force': force, 'after': 0}
+        errors, success = hg_rename(self._ui, self._repo, *pats, **opts)
+        #errors += perrs
+        return errors, success
 
     def status(self, path=''):
         """\
@@ -664,6 +633,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     targets = {}
     after = opts.get("after")
     dryrun = opts.get("dry_run")
+    errormsg = []
 
     def walkpat(pat):
         srcs = []
@@ -672,9 +642,13 @@ def hg_copy(ui, repo, pats, opts, rename=False):
             if state in '?r':
                 if exact and state == '?':
                     ui.warn(_('%s: not copying - file is not managed\n') % rel)
+                    errormsg.append((abs, 
+                            'not copying - file is not managed',))
                 if exact and state == 'r':
                     ui.warn(_('%s: not copying - file has been marked for'
                               ' remove\n') % rel)
+                    errormsg.append((abs, 
+                            'not copying - file has been marked for remove',))
                 continue
             # abs: hgsep
             # rel: ossep
@@ -697,6 +671,9 @@ def hg_copy(ui, repo, pats, opts, rename=False):
             ui.warn(_('%s: not overwriting - %s collides with %s\n') %
                     (reltarget, repo.pathto(abssrc, cwd),
                      repo.pathto(prevsrc, cwd)))
+            # XXX need to provide meaningful error message, find out what
+            # prevsrc looks like
+            errormsg.append((abssrc, '',))
             return
 
         # check for overwrites
@@ -705,6 +682,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
             if not opts['force']:
                 ui.warn(_('%s: not overwriting - file exists\n') %
                         reltarget)
+                errormsg.append((abssrc, 'destination exists',))
                 return
 
         if after:
@@ -721,9 +699,11 @@ def hg_copy(ui, repo, pats, opts, rename=False):
             except IOError, inst:
                 if inst.errno == errno.ENOENT:
                     ui.warn(_('%s: deleted in working copy\n') % relsrc)
+                    errormsg.append((abssrc, 'deleted in working copy',))
                 else:
                     ui.warn(_('%s: cannot copy - %s\n') %
                             (relsrc, inst.strerror))
+                    errormsg.append((abssrc, 'cannot copy - %s' % inst.strerror,))
                     return True # report a failure
 
         if ui.verbose or not exact:
@@ -749,6 +729,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
                 repo.copy(origsrc, abstarget)
 
         if rename and not dryrun:
+            #import pdb;pdb.set_trace()
             repo.remove([abssrc], not after)
 
     # pat: ossep
@@ -844,14 +825,18 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     if not copylist:
         raise util.Abort(_('no files to copy'))
 
+    success = []
     errors = 0
     for targetpath, srcs in copylist:
         for abssrc, relsrc, exact in srcs:
             if copyfile(abssrc, relsrc, targetpath(abssrc), exact):
                 errors += 1
+            else:
+                success.append(abssrc)
 
-    if errors:
-        ui.warn(_('(consider using --after)\n'))
+    # this is only reported if IOError happened.
+    #if errors:
+    #    ui.warn(_('(consider using --after)\n'))
 
-    return errors
+    return errormsg, success
 
