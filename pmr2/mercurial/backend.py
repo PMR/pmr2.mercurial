@@ -530,17 +530,13 @@ class Sandbox(Storage):
             the list of files to remove.  string or list of strings.
         """
 
-        filtered = self._source_check(source)
-        filtered = self._filter_paths(filtered)
-
-        remove = []
+        filtered = self._filter_paths(self._source_check(source))
+        remove, forget = [], []
         for src, abs, rel, exact in cmdutil.walk(self._repo, filtered, {}):
-            remove.append(self._fullpath(abs))
-
-        forget = []
+            remove.append(abs)
         # using status, which is relative path within the repo
-        added = self._repo.status()[1]
-        for i in source:
+        added = self._filter_paths(self._repo.status()[1])
+        for i in filtered:
             if i in added:
                 forget.append(i)
         self._repo.forget(forget)

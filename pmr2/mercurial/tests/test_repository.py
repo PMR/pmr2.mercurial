@@ -515,10 +515,26 @@ class SandboxTestCase(unittest.TestCase):
         self.assertRaises(ValueError,
                 self.sandbox.rename, [ps + 'file1', ps + 'file2'], 'move2')
 
+    def test_remove_file_str(self):
+        for i, x in enumerate(self.filelist):
+            self.sandbox.add_file_content(self.filelist[i], self.files[i])
+        self.sandbox.remove(self.filelist[2])
+        status = statdict(self.sandbox._repo.status(
+                list_ignored=True, list_clean=True))
+        self.assert_(self.filelist[2] not in status['added'])
+        self.assert_(
+            not os.path.exists(self.sandbox._fullpath(self.filelist[2])))
+        self.sandbox.commit(self.msg, self.user)
+        self.sandbox.remove(self.filelist[0])
+        # private _repo
+        status = statdict(self.sandbox._repo.status(
+                list_ignored=True, list_clean=True))
+        self.assertEqual(status['removed'], self.filelist[:1])
+
     def test_remove_file(self):
         for i, x in enumerate(self.filelist):
             self.sandbox.add_file_content(self.filelist[i], self.files[i])
-        n1 = join('z', 'x', 'y', '1')
+        n1 = join('zzz', 'xxx', 'yyy', '111')
         self.sandbox.add_file_content(n1, 'nested file')
         self.sandbox.commit(self.msg, self.user)
 
@@ -532,7 +548,7 @@ class SandboxTestCase(unittest.TestCase):
         clean = self.filelist[1:] + [n1]
         clean.sort()
 
-        n2 = join('z', 'x', 'y', '2')
+        n2 = join('zzz', 'xxx', 'yyy', '222')
         self.sandbox.add_file_content(n2, 'nested file')
         added = nested + [n2]
         added.sort()
@@ -547,7 +563,7 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(status['modified'], modified)
         self.assertEqual(status['added'], added)
 
-        # 1 modified, 2 clean, 1 new
+        # 1 modified, 2 clean, 1 added
         test1 = self.filelist + [n2]
         self.sandbox.remove(test1)
 
@@ -555,9 +571,8 @@ class SandboxTestCase(unittest.TestCase):
         status = statdict(self.sandbox._repo.status(
                 list_ignored=True, list_clean=True))
 
-        # added item should never show up
         self.assert_(not os.path.exists(self.sandbox._fullpath(n2)))
-        self.assertEqual(status['deleted'], self.filelist)
+        self.assertEqual(status['removed'], self.filelist)
 
         # 1 commited and 3 clean (should be the rest)
         test2 = [n1] + nested
@@ -596,7 +611,7 @@ class SandboxTestCase(unittest.TestCase):
 
         status = statdict(self.sandbox._repo.status(
                 list_ignored=True, list_clean=True))
-        status['deleted'] = fl
+        status['removed'] = fl
 
     def test_rename_file_success(self):
         self.sandbox.add_file_content('file1', self.files[0])
