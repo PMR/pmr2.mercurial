@@ -710,6 +710,14 @@ def statdict(st):
     )
     return dict(zip(changetypes, st))
 
+def test_suite():
+    from unittest import TestSuite, makeSuite
+    suite = TestSuite()
+    suite.addTest(makeSuite(SandboxTestCase))
+    suite.addTest(makeSuite(RepositorySandboxTestCase))
+    suite.addTest(makeSuite(RepositoryTestCase))
+    suite.addTest(makeSuite(RepositoryInitTestCase))
+    return suite
 
 if __name__ == '__main__':
     unittest.main()

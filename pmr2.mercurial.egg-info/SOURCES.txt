@@ -14,6 +14,6 @@ pmr2.mercurial.egg-info/top_level.txt
 pmr2/mercurial/__init__.py
 pmr2/mercurial/backend.py
 pmr2/mercurial/exceptions.py
-pmr2/mercurial/hgweb_ext.py
+pmr2/mercurial/ext.py
 pmr2/mercurial/tests/__init__.py
 pmr2/mercurial/tests/test_repository.py
