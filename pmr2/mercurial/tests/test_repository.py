@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import os
 from os.path import dirname, join
+
 from pmr2.mercurial import *
 from pmr2.mercurial.exceptions import *
 
@@ -23,7 +24,7 @@ class RepositoryInitTestCase(unittest.TestCase):
         self.assertRaises(PathExists, Storage.create, self.repodir)
         # existing file, causing path to be invalid.
         tf = tempfile.mkstemp()
-        os.close(tf[0])  # close the descrptior that was opened above
+        os.close(tf[0])  # close the descriptor that was opened above
         invalid = tf[1]
         invalid2 = join(invalid, 'nested')
         invalid3 = join(invalid, 'nested', 'evendeeper')
