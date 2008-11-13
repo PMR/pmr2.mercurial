@@ -15,6 +15,7 @@ from mercurial.lock import LockHeld
 from mercurial.hgweb.common import ErrorResponse
 
 from pmr2.mercurial.exceptions import *
+from pmr2.mercurial import utils
 
 demandimport.disable()
 
@@ -191,7 +192,8 @@ class Storage(object):
         # since it did get reinitialized.
         self._repo = repo
 
-    def log(self, rev=None, branch=None, limit=None, shortlog=False):
+    def log(self, rev=None, branch=None, shortlog=False, 
+            datefmt=None):
         """\
         This method returns the history of the repository.
 
@@ -206,14 +208,34 @@ class Storage(object):
         interface.
         """
 
+        # maybe move this into the hgweb_ext
+        def changelist(entries, **x):
+            for i in entries():
+                i['date'] = getdate(i['date'])
+                if shortlog:
+                    i['desc'] = utils.filter(i['desc'], 'firstline')
+                    i['author'] = utils.filter(i['author'], 'person')
+                yield i
+
         hw = hgweb(self._repo)
-        if limit is None:
-            limit = 10
-        hw.maxchanges = limit
-        hw.maxshortchanges = limit
+
+        # This is kind of silly.
+        if shortlog and datefmt is None:
+            datefmt = 'age'
+        elif datefmt is None:
+            datefmt = 'isodate'
+
+        if datefmt == 'age':
+            getdate = lambda i: utils.filter(i, datefmt) + ' ago'
+        else:
+            getdate = lambda i: utils.filter(i, datefmt)
 
         ctx = self._changectx(rev)
-        return hw.changelog(_t, ctx, shortlog)
+        result = hw.changelog(_t, ctx, shortlog)
+        for i in result:
+            i['orig_entries'] = i['entries']
+            i['entries'] = lambda **x: changelist(i['orig_entries'], **x)
+            yield i
 
     def manifest(self, rev=None, path=''):
         """\

@@ -31,6 +31,10 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
     required to generate usable output from other Mercurial features.
     """
 
+    def __init__(self, *a, **kw):
+        super(hgweb_ext, self).__init__(*a, **kw)
+        self.refresh()
+
     def status(self, tmpl, ctx, path, st):
         """\
         Based on hgweb.manifest, adapted to included features found in
