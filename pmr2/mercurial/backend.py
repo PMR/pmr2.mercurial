@@ -191,7 +191,7 @@ class Storage(object):
         # since it did get reinitialized.
         self._repo = repo
 
-    def log(self, rev=None, branch=None, limit=None):
+    def log(self, rev=None, branch=None, limit=None, shortlog=False):
         """\
         This method returns the history of the repository.
 
@@ -210,9 +210,10 @@ class Storage(object):
         if limit is None:
             limit = 10
         hw.maxchanges = limit
+        hw.maxshortchanges = limit
 
         ctx = self._changectx(rev)
-        return hw.changelog(_t, ctx)
+        return hw.changelog(_t, ctx, shortlog)
 
     def manifest(self, rev=None, path=''):
         """\

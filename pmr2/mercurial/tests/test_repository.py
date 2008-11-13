@@ -295,6 +295,13 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(log[0]['author'], 'user3 <3@example.com>')
         self.assertEqual(log[2]['desc'], 'added1')
         self.assertEqual(log[2]['author'], 'user1 <1@example.com>')
+        loggen = self.sandbox.log(shortlog=True)
+        log2 = [i for i in loggen.next()['entries']()]
+        # log is short enough
+        self.assertEqual(len(log), len(log2))
+        loggen = self.sandbox.log(limit=1, shortlog=True)
+        log3 = [i for i in loggen.next()['entries']()]
+        self.assertEqual(len(log3), 1)
 
     def test_manifest(self):
         self._demo()
