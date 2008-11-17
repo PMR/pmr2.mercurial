@@ -14,6 +14,8 @@ from binascii import hexlify
 from mercurial import demandimport
 demandimport.disable()
 
+from pmr2.mercurial import utils
+
 __all__ = [
     'hgweb_ext',
 ]
@@ -35,7 +37,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
         super(hgweb_ext, self).__init__(*a, **kw)
         self.refresh()
 
-    def status(self, tmpl, ctx, path, st):
+    def status(self, tmpl, ctx, path, st, datefmt='isodate'):
         """\
         Based on hgweb.manifest, adapted to included features found in
         hg status.
@@ -46,6 +48,8 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
             - should be the workingctx
         st 
             - the tuple returned from repo.status
+        datefmt
+            - the date format of the full filelist.
         """
 
         changetypes = (
@@ -109,6 +113,17 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                        "path": "%s%s" % (abspath, f),
                        "basename": f[:-1]}
 
+        def fulllist(**map):
+            for i in dirlist():
+                # remove first slash
+                i['file'] = i['path'][1:]
+                i['permissions'] = 'drwxr-xr-x'
+                yield i
+            for i in filelist():
+                i['date'] = utils.filter(i['date'], datefmt)
+                i['permissions'] = utils.filter(i['permissions'], 'permissions')
+                yield i
+
         return tmpl("status",
                      rev=ctx.rev(),
                      node=hex_(node),
@@ -117,6 +132,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                      upparity=parity.next(),
                      fentries=filelist,
                      dentries=dirlist,
+                     aentries=fulllist,
                      archives=[], # self.archivelist(hex_(node)),
                      tags=self.nodetagsdict(node),
                      branches=self.nodebranchdict(ctx))
@@ -215,6 +231,40 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                         child=self.siblings(fctx.children()),
                         rename=self.renamelink(fl, n),
                         permissions=fctx.manifest().flags(f))
+
+    def manifest(self, tmpl, ctx, path):
+
+        d = mercurial.hgweb.hgweb_mod.hgweb.manifest(self, tmpl, ctx, path)
+        d = d.next()
+
+        dirlist = d['dentries']
+        filelist = d['fentries']
+
+        def fulllist(**map):
+            for i in dirlist():
+                # remove first slash
+                i['file'] = i['path'][1:]
+                i['permissions'] = 'drwxr-xr-x'
+                yield i
+            for i in filelist():
+                i['date'] = utils.filter(i['date'], datefmt)
+                i['permissions'] = utils.filter(i['permissions'], 'permissions')
+                yield i
+
+        return tmpl(d[''],
+                    rev=d['rev'],
+                    node=d['node'],
+                    path=d['path'],
+                    up=d['up'],
+                    upparity=d['upparity'],
+                    fentries=d['fentries'],
+                    dentries=d['dentries'],
+                    aentries=lambda **x: fulllist(**x),
+                    archives=d['archives'],
+                    tags=d['tags'],
+                    inbranch=d['inbranch'],
+                    branches=d['branches'],
+                   )
 
 
 # XXX modified commands.rename from mercurial 1.0.2

@@ -71,6 +71,8 @@ class RepositoryTestCase(unittest.TestCase):
     def test_manifest_empty(self):
         # empty manifest
         self.assertRaises(RepoEmpty, self.workspace.manifest, 'tip')
+
+    def test_manifest_path_not_found(self):
         self.assertRaises(PathNotFound, 
                 self.workspace.manifest, 'tip', path='no')
 
@@ -433,7 +435,8 @@ class SandboxTestCase(unittest.TestCase):
         self.assert_(result)
 
     def test_status(self):
-        # should not fail.
+        # status code is based on manifest, including the additional
+        # aentries code added to both status and manifest.
         stat = [i for i in self.sandbox.status()]
         fent = [i for i in stat[0]['fentries']()]
         self.assertEqual(len(fent), 0)
@@ -448,7 +451,15 @@ class SandboxTestCase(unittest.TestCase):
         stat = [i for i in self.sandbox.status()]
         fent = [i for i in stat[0]['fentries']()]
         dent = [i for i in stat[0]['dentries']()]
-        # print '%s\n%s\n%s\n' % (stat, fent, dent)
+        aent = [i for i in stat[0]['aentries']()]
+
+        self.assertEqual(len(aent), len(dent + fent))
+        alist = [i['file'] for i in aent]
+        flist = [i['file'] for i in fent]
+        dlist = [i['path'][1:] for i in dent]
+        dflist = dlist + flist
+        self.assertEqual(alist, dflist)
+
         self.assertEqual(len(fent), 3)
         self.assertEqual(len(dent), 1)
         self.assertEqual(fent[0]['file'], 'file1')

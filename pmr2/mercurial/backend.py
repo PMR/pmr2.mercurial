@@ -250,29 +250,12 @@ class Storage(object):
         is raised - this includes a newly instantiated repository.  Use
         Sandbox, and call the status method instead to get the contents.
         """
-
-        def fulllist(manifest, **x):
-            for i in manifest['dentries']():
-                # remove first slash
-                i['file'] = i['path'][1:]
-                i['permissions'] = 'drwxr-xr-x'
-                yield i
-            for i in manifest['fentries']():
-                i['date'] = utils.filter(i['date'], datefmt)
-                i['permissions'] = utils.filter(i['permissions'], 'permissions')
-                yield i
                 
         hw = hgweb(self._repo)
         ctx = self._changectx(rev)
 
         try:
-            manifest = hw.manifest(_t, ctx, path)
-            for i in manifest:
-                i['aentries'] = lambda **x: fulllist(i, **x)
-                # XXX this defers exceptions below, i.e. not raised
-                # in this method.  Ideally the above method and this
-                # be brought over to ext module.
-                yield i
+            return hw.manifest(_t, ctx, path)
         except ErrorResponse:
             # as we do have a valid context, and if path is empty...
             if not path:
