@@ -255,7 +255,7 @@ class Storage(object):
         ctx = self._changectx(rev)
 
         try:
-            return hw.manifest(_t, ctx, path)
+            return hw.manifest(_t, ctx, path, datefmt)
         except ErrorResponse:
             # as we do have a valid context, and if path is empty...
             if not path:

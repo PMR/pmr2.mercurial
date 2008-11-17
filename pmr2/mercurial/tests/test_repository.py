@@ -311,6 +311,10 @@ class SandboxTestCase(unittest.TestCase):
         c1 = self.sandbox._ctx.node()
         self.assertNotEqual(c0, c1)
         self.assertNotEqual(n0, n1, 'hgweb not updated')
+        m = self.sandbox.manifest().next()
+        # customized aentries
+        aentries = [i['file'] for i in m['aentries']()]
+        self.assertEqual(self.filelist, aentries)
 
     def test_mkdir(self):
         # invalid parent path

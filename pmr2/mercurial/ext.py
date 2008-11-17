@@ -232,7 +232,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                         rename=self.renamelink(fl, n),
                         permissions=fctx.manifest().flags(f))
 
-    def manifest(self, tmpl, ctx, path):
+    def manifest(self, tmpl, ctx, path, datefmt='isodate'):
 
         d = mercurial.hgweb.hgweb_mod.hgweb.manifest(self, tmpl, ctx, path)
         d = d.next()
