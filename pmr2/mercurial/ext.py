@@ -1,4 +1,5 @@
 import os.path
+import mimetypes
 
 # needed for manifest/status method addon
 from mercurial import util, cmdutil
