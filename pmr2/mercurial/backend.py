@@ -263,6 +263,16 @@ class Storage(object):
             else:
                 raise PathNotFound("path '%s' not found" % path)
 
+    def raw_manifest(self, rev=None):
+        """\
+        Returns raw manifest.
+
+        Useful for grabing the list of entire files.
+        """
+
+        ctx = self._changectx(rev)
+        return ctx.manifest()
+
     def _filectx(self, rev=None, path=None):
         """\
         Returns contents of file.
