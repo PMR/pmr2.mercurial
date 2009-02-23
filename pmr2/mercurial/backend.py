@@ -139,7 +139,7 @@ class Storage(object):
 
         try:
             self._ctx = self._repo.changectx(changeid)
-        except RepoError:
+        except (RepoError, revlog.LookupError,):
             #self._ctx = None
             if changeid is None:
                 self._ctx = self._repo.changectx('tip')
