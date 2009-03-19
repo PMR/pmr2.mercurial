@@ -1,4 +1,5 @@
 import os
+import cgi
 import ConfigParser
 from cStringIO import StringIO
 from mercurial import ui, hg, revlog, demandimport, cmdutil, util
@@ -13,6 +14,8 @@ from mercurial.repo import RepoError
 from mercurial.util import Abort
 from mercurial.lock import LockHeld
 from mercurial.hgweb.common import ErrorResponse
+import mercurial.hgweb.protocol
+from mercurial.hgweb.request import wsgirequest
 
 from pmr2.mercurial.exceptions import *
 from pmr2.mercurial import utils
@@ -307,6 +310,98 @@ class Storage(object):
         # reset the status messages.
         self._ui.pushbuffer()
         return result
+
+    def process_request(self, request):
+        """
+        Process the request object and returns output.
+        """
+
+        # XXX this will need to be rewritten to be more WSGI friendly.
+
+        if request.REQUEST_METHOD != 'GET':
+            # We need to do our own parsing, ZPublisher ignores POST.
+            # This line will be a problem if Mercurial decides to do
+            # POST properly (i.e. not use QUERY_STRING).
+            items = cgi.parse_qsl(request.QUERY_STRING)
+            request.form.update(dict(items))
+
+        command = 'cmd' in request and request['cmd'] or None
+
+        if not command:
+            raise UnsupportedCommand('unspecified command')
+        try:
+            method = getattr(mercurial.hgweb.protocol, command)
+        except AttributeError:
+            raise UnsupportedCommand('%s is unsupported' % command)
+
+        # we are in, so get back to the start
+        request.stdin.seek(0)
+
+        # XXX the request object *should* be WSGI compliant as Mercurial
+        # supports it, but we are going to emulate it for now.
+        env = dict(request.environ)
+        # 'REQUEST_URI' is missing but seems to be unused
+        env['REMOTE_HOST'] = env['REMOTE_ADDR']
+
+        # emulate wsgi environment
+        env['wsgi.version'] = (1, 0)
+        # environment variable has https
+        env['wsgi.url_scheme'] = request.base.split(':')[0]  # self.url_scheme
+        env['wsgi.input'] = request.stdin # self.rfile
+        env['wsgi.errors'] = StringIO() #_error_logger(self)
+        env['wsgi.multithread'] = True  # XXX guess
+        env['wsgi.multiprocess'] = True  # same as above
+        env['wsgi.run_once'] = True
+
+        # build hgweb object.
+        hw = hgweb(self._repo)
+        hw.close_connection = True
+        hw.saved_status = None
+        hw.saved_headers = []
+        hw.sent_headers = False
+        hw.length = None
+
+        headers_set = []
+        headers_sent = []
+
+        # copied from mercurial.hgweb.wsgicgi, which in turn is copied
+        # from PEP-0333 
+        # http://www.python.org/dev/peps/pep-0333/#the-server-gateway-side
+
+        out = StringIO()
+
+        def write(data):
+            if not headers_set:
+                raise AssertionError("write() before start_response()")
+
+            elif not headers_sent:
+                # Before the first output, send the stored headers
+                status, response_headers = headers_sent[:] = headers_set
+                for header in response_headers:
+                    # let zope deal with the header.
+                    request.response.setHeader(*header)
+
+            out.write(data)
+            out.flush()
+
+        def start_response(status, response_headers, exc_info=None):
+            if exc_info:
+                try:
+                    if headers_sent:
+                        # Re-raise original exception if headers sent
+                        raise exc_info[0], exc_info[1], exc_info[2]
+                finally:
+                    exc_info = None     # avoid dangling circular ref
+            elif headers_set:
+                raise AssertionError("Headers already set!")
+
+            headers_set[:] = [status, response_headers]
+            return write
+
+        # prepare the environment, run it, return result manually.
+        env = wsgirequest(env, start_response)
+        method(hw, env)
+        return out.getvalue()
 
 
 class Sandbox(Storage):

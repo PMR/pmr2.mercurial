@@ -24,3 +24,7 @@ class RepoEmpty(ValueError):
 
 class RepoNotFound(ValueError):
     """repository not found"""
+
+
+class UnsupportedCommand(AttributeError):
+    """unsupported hgweb command"""
