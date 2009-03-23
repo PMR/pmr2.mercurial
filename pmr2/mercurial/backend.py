@@ -196,7 +196,7 @@ class Storage(object):
         self._repo = repo
 
     def log(self, rev=None, branch=None, shortlog=False, 
-            datefmt=None):
+            datefmt=None, maxchanges=None):
         """\
         This method returns the history of the repository.
 
@@ -221,6 +221,9 @@ class Storage(object):
                 yield i
 
         hw = hgweb(self._repo)
+
+        if maxchanges is not None:
+            hw.maxchanges = hw.maxshortchanges = maxchanges
 
         # This is kind of silly.
         if shortlog and datefmt is None:
