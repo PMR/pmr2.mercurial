@@ -73,7 +73,7 @@ class Storage(object):
     hgweb_mod.
     """
 
-    def __init__(self, path, ctx=None):
+    def __init__(self, rpath, ctx=None):
         """\
         Creates the object wrapper for the repository object.
 
@@ -83,18 +83,18 @@ class Storage(object):
         be encoded into a utf-8 encoded 'str' by default.
         """
 
-        if isinstance(path, str):
-            self._path = path
-        elif isinstance(path, unicode):
-            self._path = path.encode('utf8')
+        if isinstance(rpath, str):
+            self._rpath = rpath
+        elif isinstance(rpath, unicode):
+            self._rpath = rpath.encode('utf8')
         else:
             raise TypeError('path must be an instance of basestring')
         
         self._ui = ui.ui(interactive=False)
         self._ui.pushbuffer()
-        self._ui.readconfig(os.path.join(self._path, '.hg', 'hgrc'))
+        self._ui.readconfig(os.path.join(self._rpath, '.hg', 'hgrc'))
         try:
-            self._repo = hg.repository(self._ui, self._path)
+            self._repo = hg.repository(self._ui, self._rpath)
         except RepoError:
             # Repository initializing error.
             # XXX should include original traceback
@@ -140,14 +140,15 @@ class Storage(object):
         according to dirlist.
         """
 
+        # this is used because we are just going to present users with
+        # the latest changes regardless for now.
+        if changeid is None:
+            changeid = 'tip'
+
         try:
             self._ctx = self._repo.changectx(changeid)
         except (RepoError, revlog.LookupError,):
-            #self._ctx = None
-            if changeid is None:
-                self._ctx = self._repo.changectx('tip')
-            else:
-                raise RevisionNotFound('revision %s not found' % changeid)
+            raise RevisionNotFound('revision %s not found' % changeid)
         return self._ctx
 
     def branches(self):
@@ -189,7 +190,7 @@ class Storage(object):
             except:
                 raise RevisionNotFound('revision %s not found' % rev)
 
-        clone_result = hg.clone(self._ui, source=self._path, dest=dest, 
+        clone_result = hg.clone(self._ui, source=self._rpath, dest=dest, 
                 rev=rev, update=update)
         repo, repo_clone = clone_result
         # since it did get reinitialized.
@@ -443,8 +444,8 @@ class Sandbox(Storage):
         if os.path.isabs(name):
             fn = name
         else:
-            fn = os.path.normpath(os.path.join(self._path, name))
-        if not fn.startswith(self._path):
+            fn = os.path.normpath(os.path.join(self._rpath, name))
+        if not fn.startswith(self._rpath):
             raise PathInvalid('supplied path is outside repository')
         return fn
 

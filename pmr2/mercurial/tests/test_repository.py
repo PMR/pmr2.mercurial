@@ -205,8 +205,8 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(m0, m1, 'revision mismatch between clone')
 
         # validate working copy is cloned properly.
-        f0 = open(join(repo0._path, 'file3')).read()
-        f1 = open(join(repo1._path, 'file3')).read()
+        f0 = open(join(repo0._rpath, 'file3')).read()
+        f1 = open(join(repo1._rpath, 'file3')).read()
         self.assertEqual(f0, f1,
                 'file content in working copy mismatch between clone')
 
@@ -219,11 +219,11 @@ class SandboxTestCase(unittest.TestCase):
         repo2 = Storage(dest[2])
         self.assertEqual(repo2._repo.changelog.count(), 2)
         #self.sandbox.add_file_content('file1', self.files[1])  # rev1
-        ff = open(join(repo2._path, 'file1')).read()
+        ff = open(join(repo2._rpath, 'file1')).read()
         self.assertEqual(ff, self.files[1],
                 'file content in working copy mismatch between clone')
         #self.sandbox.add_file_content('file2', self.files[0])  # rev0
-        ff = open(join(repo2._path, 'file2')).read()
+        ff = open(join(repo2._rpath, 'file2')).read()
         self.assertEqual(ff, self.files[0],
                 'file content in working copy mismatch between clone')
 
@@ -231,7 +231,7 @@ class SandboxTestCase(unittest.TestCase):
         repo1.clone(dest[3], node, update=False)
         repo3 = Storage(dest[3])
         # file should not exist.
-        self.assert_(not os.path.exists(join(repo3._path, 'file1')))
+        self.assert_(not os.path.exists(join(repo3._rpath, 'file1')))
 
     def test_commit_fail(self):
         # commit failing due to missing required values
@@ -355,10 +355,10 @@ class SandboxTestCase(unittest.TestCase):
         source.commit('added4', 'user4 <4@example.com>')
 
         # pull the new stuff from source to target
-        heads = target.pull(source._path)
+        heads = target.pull(source._rpath)
         self.assertEqual(heads, 1)
         # should automatically update working directory.
-        self.assert_(os.path.exists(join(target._path, 'file4')),
+        self.assert_(os.path.exists(join(target._rpath, 'file4')),
                      'target working dir not updated')
 
         # reinitialize source
@@ -375,17 +375,19 @@ class SandboxTestCase(unittest.TestCase):
         target.add_file_content('file2', 'add')
         target.commit('targetadd', 'user4 <4@example.com>')
 
-        heads = target.pull(source._path)
+        heads = target.pull(source._rpath)
 
-        t = open(join(target._path, 'file1')).read()
+        t = open(join(target._rpath, 'file1')).read()
         self.assertEqual(t, 'target', 'target working dir overwritten!')
-        self.assert_(not os.path.exists(join(target._path, 'newsource')))
+        self.assert_(not os.path.exists(join(target._rpath, 'newsource')))
 
         self.assert_(heads > 1)
 
         m2 = source.manifest().next()['node']
         m3 = target.manifest().next()['node']
-        self.assertNotEqual(m2, m3) 
+
+        # XXX when branches are better supported, this need to be revisited
+        self.assertEqual(m2, m3)  # they are all updated to latest now (tip).
         self.assertNotEqual(m1, m3)  # it really should have been updated.
         self.assertNotEqual(m0, m2)  # it really should have been updated.
 
