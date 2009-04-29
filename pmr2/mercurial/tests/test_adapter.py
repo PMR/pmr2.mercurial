@@ -14,7 +14,7 @@ from zope.publisher.browser import TestRequest
 import pmr2.mercurial
 from pmr2.mercurial import *
 from pmr2.mercurial.interfaces import *
-from pmr2.mercurial.content import *
+from pmr2.mercurial.adapter import *
 from pmr2.mercurial.exceptions import *
 
 from zope.configuration.xmlconfig import xmlconfig

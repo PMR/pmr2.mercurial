@@ -4,7 +4,7 @@
   
   <adapter
       for="pmr2.mercurial.interfaces.IPMR2StorageBase"
-      factory="pmr2.mercurial.content.PMR2StorageAdapter"
+      factory="pmr2.mercurial.adapter.PMR2StorageAdapter"
       provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
       name="PMR2Storage"
       />
@@ -12,7 +12,7 @@
   <adapter
       for="pmr2.mercurial.interfaces.IPMR2StorageBase
            zope.publisher.interfaces.IPublisherRequest"
-      factory="pmr2.mercurial.content.PMR2StorageRequestAdapter"
+      factory="pmr2.mercurial.adapter.PMR2StorageRequestAdapter"
       provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
       name="PMR2StorageRequest"
       />

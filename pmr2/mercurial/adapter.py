@@ -63,10 +63,6 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
         Storage.__init__(self, root, self._rev)
 
     @property
-    def rev(self):
-        return self._rev
-
-    @property
     def path(self):
         return self._path
 
