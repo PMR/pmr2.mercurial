@@ -19,17 +19,17 @@ class PMR2StorageAdapter(Storage):
     zope.interface.implements(IPMR2HgWorkspaceAdapter)
     zope.component.adapts(IPMR2StorageBase)
 
-    def __init__(self, context):
+    def __init__(self, context, rev=None):
         """
         context -
             The object to turn into a workspace
-        request -
-            The request
+        rev -
+            The revision (optional)
         """
 
         self.context = context
         root = context.get_path()
-        Storage.__init__(self, root)
+        Storage.__init__(self, root, rev)
 
 
 class PMR2StorageRequestAdapter(PMR2StorageAdapter):
@@ -54,13 +54,7 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
         self.request = request
         self._rev = request.get('rev', None)
         self._path = '/'.join(request.get('request_subpath', ()))
-
-        # similiar to parent
-        self.context = context
-        root = context.get_path()
-
-        # however we have a specific revision, try this
-        Storage.__init__(self, root, self._rev)
+        PMR2StorageAdapter.__init__(self, context, self._rev)
 
     @property
     def path(self):
