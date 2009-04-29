@@ -122,6 +122,7 @@ class RepositorySandboxTestCase(unittest.TestCase):
         f = self.repo.fileinfo(rev=log[2]['node'], path='file1').next()
         self.assertEqual(f['file'], 'file1')
         self.assertEqual(f['node'], log[2]['node'])
+        self.assertEqual(f['node'], self.repo.rev)
 
 
 class SandboxTestCase(unittest.TestCase):
@@ -202,6 +203,7 @@ class SandboxTestCase(unittest.TestCase):
         repo1 = Storage(dest[1])
         m0 = repo0.manifest().next()['node']
         m1 = repo1.manifest().next()['node']
+
         self.assertEqual(m0, m1, 'revision mismatch between clone')
 
         # validate working copy is cloned properly.

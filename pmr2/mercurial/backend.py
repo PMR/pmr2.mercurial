@@ -315,6 +315,11 @@ class Storage(object):
         self._ui.pushbuffer()
         return result
 
+    @property
+    def rev(self):
+        if self._ctx:
+            return self._ctx.node().encode('hex')
+
     def process_request(self, request):
         """
         Process the request object and returns output.

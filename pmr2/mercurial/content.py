@@ -77,23 +77,33 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
 
         return Storage.raw_manifest(self, self._rev)
 
-    def get_manifest(self, path):
+    def get_manifest(self, path=None):
         """\
         Returns manifest at path.
         """
 
-        result = Storage.manifest(self.rev, path).next()
+        if path is None:
+            path = self.path
+        result = Storage.manifest(self, self.rev, path).next()
         return result
 
-    def get_fileinfo(self, path):
+    def get_fileinfo(self, path=None):
         """\
         Returns file information at path.
         """
 
-        storage = self._storage
-        result = storage.fileinfo(self.rev, path).next()
-        result['date'] = utils.filter(self._fileinfo['date'], 'isodate')
+        if path is None:
+            path = self.path
+        result = Storage.fileinfo(self, self.rev, path).next()
+        result['date'] = utils.filter(result['date'], 'isodate')
         return result
+
+    def get_log(self, rev=None, branch=None, shortlog=False, datefmt=None):
+        """See IExposure"""
+
+        # XXX valid datefmt values might need to be documented/checked
+        storage = self.get_storage()
+        return storage.log(rev, branch, shortlog, datefmt).next()
 
     @property
     def file(self):
@@ -103,10 +113,29 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
 
         return Storage.file(self, self._rev, self._path)
 
-    def get_log(self, rev=None, branch=None, shortlog=False, datefmt=None):
-        """See IExposure"""
+    @property
+    def fileinfo(self):
+        """\
+        Returns content at path.
+        """
 
-        # XXX valid datefmt values might need to be documented/checked
-        storage = self.get_storage()
-        return storage.log(rev, branch, shortlog, datefmt).next()
+        if not hasattr(self, '_fileinfo'):
+            try:
+                self._fileinfo = self.get_fileinfo()
+            except PathNotFound:
+                self._fileinfo = None
+        return self._fileinfo
+
+    @property
+    def manifest(self):
+        """\
+        Returns content at path.
+        """
+
+        if not hasattr(self, '_manifest'):
+            try:
+                self._manifest = self.get_manifest()
+            except PathNotFound:
+                self._manifest = None
+        return self._manifest
 

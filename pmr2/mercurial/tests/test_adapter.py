@@ -72,12 +72,15 @@ class AdapterTestCase(unittest.TestCase):
         r = TestRequest(rev=rev)
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         self.assertNotEqual(a, None, 'adapter not registered')
-        rev2 = a.manifest().next()['node']
+        self.assertEqual(a.fileinfo, None)
+        rev2 = a.manifest['node']
         self.assertEqual(rev, rev2)
 
         r = TestRequest(rev=rev, request_subpath=('file1',))
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
+        self.assertEqual(a.manifest, None)
         self.assertNotEqual(a, None, 'adapter not registered')
+        self.assertEqual(a.fileinfo['node'], rev2)
         fc = a.file
         self.assertEqual(fc, self.files[1])
 
