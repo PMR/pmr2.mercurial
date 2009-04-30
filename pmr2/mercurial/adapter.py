@@ -1,6 +1,4 @@
-import zope.schema
 import zope.interface
-import zope.component
 from zope.publisher.interfaces import NotFound, IPublisherRequest
 
 from pmr2.mercurial import Storage, Sandbox, utils
@@ -17,7 +15,6 @@ class PMR2StorageAdapter(Storage):
     """
 
     zope.interface.implements(IPMR2HgWorkspaceAdapter)
-    zope.component.adapts(IPMR2StorageBase)
 
     def __init__(self, context, rev=None):
         """
@@ -40,7 +37,6 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
     """
 
     zope.interface.implements(IPMR2HgWorkspaceAdapter)
-    zope.component.adapts(IPMR2StorageBase, IPublisherRequest)
 
     def __init__(self, context, request):
         """
@@ -59,6 +55,10 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
     @property
     def path(self):
         return self._path
+
+    @property
+    def short_rev(self):
+        return utils.filter(self.rev, 'short')
 
     def get_full_manifest(self):
         """\
@@ -88,12 +88,16 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
         result['date'] = utils.filter(result['date'], 'isodate')
         return result
 
-    def get_log(self, rev=None, branch=None, shortlog=False, datefmt=None):
-        """See IExposure"""
+    def get_log(self, rev=None, branch=None, shortlog=False, datefmt=None, 
+            maxchanges=None):
+        """\
+        Returns log.
+        """
 
+        if rev is None:
+            rev = self.rev
         # XXX valid datefmt values might need to be documented/checked
-        storage = self.get_storage()
-        return storage.log(rev, branch, shortlog, datefmt).next()
+        return self.log(rev, branch, shortlog, datefmt, maxchanges).next()
 
     @property
     def file(self):
