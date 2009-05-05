@@ -103,14 +103,27 @@ class Storage(object):
         self._changectx(ctx)
 
     @staticmethod
-    def create(path, create_dir=True):
+    def create(path, create_dir=True, ffa=False):
         """\
         Creates a repository at the location that was specified during
         the creation of this repository object.
 
         `create_dir' specifies whether to create the directory for the
         hg repo if create is set to true.  Default: True
+
+        `ffa' determines if a free for all access config file should be
+        written.  Will create if True.  Default is False.
         """
+
+        def write_ffa_access(path):
+            config_path = os.path.join(path, '.hg', 'hgrc',)
+            f = open(config_path, 'w')
+            f.write(
+                '[web]\n'
+                'push_ssl = false\n'
+                'allow_push = *\n'
+            )
+            f.close()
 
         if create_dir:
             if os.path.isdir(path):
@@ -125,6 +138,8 @@ class Storage(object):
         try:
             u = ui.ui(interactive=False)
             if hg.repository(u, path, create=1):
+                if ffa:
+                    write_ffa_access(path)
                 result = True
         except:
             # XXX should include original traceback
