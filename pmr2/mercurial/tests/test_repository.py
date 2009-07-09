@@ -68,13 +68,13 @@ class RepositoryTestCase(unittest.TestCase):
         self.assertEqual(ctx0.branch(), 'default', msg='unexpected context')
         self.assertRaises(RevisionNotFound, self.workspace._changectx, 'fail')
 
-    def test_manifest_empty(self):
+    def test_raw_manifest_empty(self):
         # empty manifest
-        self.assertRaises(RepoEmpty, self.workspace.manifest, 'tip')
+        self.assertEqual(self.workspace.raw_manifest(), {})
 
-    def test_manifest_path_not_found(self):
+    def test_file_path_not_found(self):
         self.assertRaises(PathNotFound, 
-                self.workspace.manifest, 'tip', path='no')
+                self.workspace.file, 'tip', path='no')
 
 
 class RepositorySandboxTestCase(unittest.TestCase):
@@ -250,7 +250,7 @@ class SandboxTestCase(unittest.TestCase):
         node2 = self.sandbox._ctx.node()
         # private
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
         self.assertEqual(status['clean'], ['file1'])
         self.assertNotEqual(node1, node2, 'internal context not updated')
 
@@ -286,7 +286,7 @@ class SandboxTestCase(unittest.TestCase):
         self.sandbox.commit(self.msg, self.user)
         # XXX - accessing private attributes for verification
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
         self.assertEqual(status['clean'], ['file1', 'file2',])
 
     def test_log(self):
@@ -304,19 +304,15 @@ class SandboxTestCase(unittest.TestCase):
         # log is short enough
         self.assertEqual(len(log), len(log2))
 
-    def test_manifest(self):
+    def test_raw_manifest(self):
         self._demo()
-        n0 = str(self.sandbox.manifest().next()['node'])
         c0 = self.sandbox._ctx.node()
         self._demo()
-        n1 = str(self.sandbox.manifest().next()['node'])
         c1 = self.sandbox._ctx.node()
         self.assertNotEqual(c0, c1)
-        self.assertNotEqual(n0, n1, 'hgweb not updated')
-        m = self.sandbox.manifest().next()
-        # customized aentries
-        aentries = [i['file'] for i in m['aentries']()]
-        self.assertEqual(self.filelist, aentries)
+        m = self.sandbox.raw_manifest().keys()
+        m.sort()
+        self.assertEqual(self.filelist, m)
 
     def test_mkdir(self):
         # invalid parent path
@@ -364,8 +360,8 @@ class SandboxTestCase(unittest.TestCase):
                      'target working dir not updated')
 
         # reinitialize source
-        m0 = source.manifest().next()['node']
-        m1 = target.manifest().next()['node']
+        m0 = source._changectx().node()
+        m1 = target._changectx().node()
         self.assertEqual(m0, m1, 'commit id mismatch')
 
         source.add_file_content('file1', 'source')
@@ -385,8 +381,8 @@ class SandboxTestCase(unittest.TestCase):
 
         self.assert_(heads > 1)
 
-        m2 = source.manifest().next()['node']
-        m3 = target.manifest().next()['node']
+        m2 = source._changectx().node()
+        m3 = target._changectx().node()
 
         # XXX when branches are better supported, this need to be revisited
         self.assertEqual(m2, m3)  # they are all updated to latest now (tip).
@@ -545,7 +541,7 @@ class SandboxTestCase(unittest.TestCase):
             self.sandbox.add_file_content(self.filelist[i], self.files[i])
         self.sandbox.remove(self.filelist[2])
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
         self.assert_(self.filelist[2] not in status['added'])
         self.assert_(
             not os.path.exists(self.sandbox._fullpath(self.filelist[2])))
@@ -553,7 +549,7 @@ class SandboxTestCase(unittest.TestCase):
         self.sandbox.remove(self.filelist[0])
         # private _repo
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
         self.assertEqual(status['removed'], self.filelist[:1])
 
     def test_remove_file(self):
@@ -582,7 +578,7 @@ class SandboxTestCase(unittest.TestCase):
 
         # private _repo
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
         # check status
         self.assertEqual(status['clean'], clean)
         self.assertEqual(status['modified'], modified)
@@ -594,7 +590,7 @@ class SandboxTestCase(unittest.TestCase):
 
         # private _repo
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
 
         self.assert_(not os.path.exists(self.sandbox._fullpath(n2)))
         self.assertEqual(status['removed'], self.filelist)
@@ -605,7 +601,7 @@ class SandboxTestCase(unittest.TestCase):
 
         # private _repo
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
 
         fl = test1 + test2
         # this method will return nothing as all the paths will be 
@@ -635,13 +631,14 @@ class SandboxTestCase(unittest.TestCase):
         self.assert_(not os.path.exists(self.sandbox._fullpath('e')))
 
         status = statdict(self.sandbox._repo.status(
-                list_ignored=True, list_clean=True))
+                ignored=True, clean=True))
         status['removed'] = fl
 
     def test_rename_file_success(self):
         self.sandbox.add_file_content('file1', self.files[0])
         errs, copied = self.sandbox.rename('file1', 'move1')
-        self.assertEqual(len(errs), 0)
+        # this is not strictly an error, just a warning.
+        self.assert_('file1 has not been committed yet' in errs[0])
         # private _repo
         status = statdict(self.sandbox._repo.status())
         self.assertEqual(copied[0], 'file1')
@@ -723,8 +720,8 @@ class SandboxTestCase(unittest.TestCase):
         # [move1/file1, move1/file2] both exists
         self.assertEqual(len(errs), 2)
         # alphabetical
-        self.assertEqual(errs[0][0], 'file1')
-        self.assertEqual(errs[1][0], 'file2')
+        self.assert_('file1' in errs[0])
+        self.assert_('file2' in errs[1])
 
 def statdict(st):
     # build a stat dictionary

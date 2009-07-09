@@ -2,12 +2,8 @@ import os
 import cgi
 import ConfigParser
 from cStringIO import StringIO
-from mercurial import ui, hg, revlog, demandimport, cmdutil, util
+from mercurial import ui, hg, revlog, demandimport, cmdutil, util, context
 from mercurial.i18n import _
-
-# modified hgweb
-#from ext import hgweb_ext as hgweb
-#from ext import hg_copy, hg_rename
 
 from mercurial.hgweb.hgweb_mod import hgweb
 
@@ -17,12 +13,11 @@ from mercurial.util import Abort
 from mercurial.hgweb.common import ErrorResponse
 import mercurial.hgweb.protocol
 from mercurial.hgweb.request import wsgirequest
-
-#from pmr2.mercurial import webcommands
 from mercurial.hgweb import webcommands
 
 from pmr2.mercurial.exceptions import *
-from pmr2.mercurial import utils
+from pmr2.mercurial import utils, ext
+from ext import hg_copy, hg_rename
 
 demandimport.disable()
 
@@ -51,10 +46,22 @@ class _ui(ui.ui):
     # is supported by mercurial
     def __init__(self, src=None):
         oldui.__init__(self, src)
+        self._errors = []
         if src:
             self._buffers = src._buffers
+            self._errors = src._errors
 
-    write_err = ui.ui.write
+    def write_err(self, *args):
+        if self._errors:
+            self._errors[-1].extend([str(a) for a in args])
+        else:
+            self.write(*args)
+
+    def push_errors(self):
+        self._errors.append([])
+
+    def pop_errors(self):
+        return self._errors.pop()
 
 oldui = ui.ui
 ui.ui = _ui
@@ -247,6 +254,7 @@ class Storage(object):
                 yield i
 
         hw = hgweb(self._repo)
+        hw.refresh()
 
         if maxchanges is not None:
             hw.maxchanges = hw.maxshortchanges = maxchanges
@@ -263,7 +271,7 @@ class Storage(object):
             getdate = lambda i: utils.filter(i, datefmt)
 
         ctx = self._changectx(rev)
-        result = hw.changelog(_t, ctx, shortlog)
+        result = ext.changelog(hw, ctx, _t, shortlog)
         for i in result:
             i['orig_entries'] = i['entries']
             i['entries'] = lambda **x: changelist(i['orig_entries'], **x)
@@ -299,7 +307,7 @@ class Storage(object):
     def fileinfo(self, rev=None, path=None):
         hw = hgweb(self._repo)
         fctx = self._filectx(rev, path)
-        return hw.filerevision(_t, fctx)
+        return webcommands._filerevision(hw, _t, fctx)
 
     def tags(self):
         return self._repo.tags()
@@ -332,16 +340,7 @@ class WebStorage(hgweb, Storage):
 
     def file(self, request, datefmt='isodate'):
         """\
-        Returns a manifest of the current directory.
-
-        This method is implemented as a wrapper around hgweb.changelog(),
-        so the value return is actually an iterator, and the structure
-        will likely change when this class is migrated to a common
-        interface.
-
-        As per hgweb manifest, if there file listing is empty, exception
-        is raised - this includes a newly instantiated repository.  Use
-        Sandbox, and call the status method instead to get the contents.
+        This method is implemented as a wrapper around webcommands.file.
         """
 
         try:
@@ -466,7 +465,7 @@ class Sandbox(Storage):
         # XXX attribute selection could use some work.
 
         if changeid is _cwd:
-            self._ctx = self._repo.workingctx()
+            self._ctx = context.workingctx(self._repo)
             return self._ctx
         else:
             return Storage._changectx(self, changeid)
@@ -577,7 +576,7 @@ class Sandbox(Storage):
         if rev is _cwd and path not in fctx.manifest():
             raise PathNotFound("path '%s' not found" % path)
         hw = hgweb(self._repo)
-        return hw.filerevision(_t, fctx)
+        return ext.filerevision(hw, _t, fctx)
 
     def mkdir(self, dirname):
         """\
@@ -697,13 +696,12 @@ class Sandbox(Storage):
 
         filtered = self._filter_paths(self._source_check(source))
         remove, forget = [], []
-        for src, abs, rel, exact in cmdutil.walk(self._repo, filtered, {}):
-            remove.append(abs)
-        # using status, which is relative path within the repo
-        added = self._filter_paths(self._repo.status()[1])
-        for i in filtered:
-            if i in added:
-                forget.append(i)
+
+        m = cmdutil.match(self._repo, filtered, {})
+        s = self._repo.status(match=m, clean=True)
+        modified, added, deleted, clean = s[0], s[1], s[3], s[6]
+        # assume forced, and purge
+        remove, forget = modified + deleted + clean + added, added
         self._repo.forget(forget)
         self._repo.remove(remove, unlink=True)
 
@@ -756,7 +754,9 @@ class Sandbox(Storage):
         pats.append(f_dest)  # add destination pattern list
 
         opts = {'force': force, 'after': 0}
-        errors, success = hg_rename(self._ui, self._repo, *pats, **opts)
+        self._ui.push_errors()
+        ec, success = hg_rename(self._ui, self._repo, *pats, **opts)
+        errors = self._ui.pop_errors()
         errors.sort()
         return errors, success
 
@@ -772,10 +772,10 @@ class Sandbox(Storage):
 
         # get back to latest working copy because this is what we want.
         ctx = self._changectx(_cwd)
-        st = self._repo.status(list_ignored=True, list_clean=True)
+        st = self._repo.status(ignored=True, clean=True)
 
         hw = hgweb(self._repo)
-        return hw.status(_t, self._ctx, path, st)
+        return ext.status(hw, _t, self._ctx, path, st)
 
 # XXX features missing compared to prototype in pmr2.hgpmr.repository
 # - archive: should be done via hgweb
