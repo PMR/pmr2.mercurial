@@ -91,11 +91,12 @@ class PMR2StorageRequestAdapter(WebStorage):
         return result
 
     @property
-    def file(self):
+    def structure(self):
         """\
         Returns file or manifest at path.
         """
 
+        # TODO? cache results?
         result = WebStorage.file(self, self.request).next()
         return result
 

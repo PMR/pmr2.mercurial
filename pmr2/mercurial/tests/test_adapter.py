@@ -74,13 +74,13 @@ class AdapterTestCase(unittest.TestCase):
         r = TestRequest(rev=rev)
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         self.assertNotEqual(a, None, 'adapter not registered')
-        rev2 = a.file['node']
+        rev2 = a.structure['node']
         self.assertEqual(rev, rev2, 'hgweb revision and default not the same?')
 
         r = TestRequest(rev=rev, request_subpath=('file1',))
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         self.assertNotEqual(a, None, 'adapter not registered')
-        self.assertEqual(a.file['node'], rev2)
+        self.assertEqual(a.structure['node'], rev2)
         fc = a.rawfile
         self.assertEqual(fc, self.files[1])
 
