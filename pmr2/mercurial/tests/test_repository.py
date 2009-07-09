@@ -201,8 +201,8 @@ class SandboxTestCase(unittest.TestCase):
         repo0.clone(dest[1])
 
         repo1 = Storage(dest[1])
-        m0 = repo0.manifest().next()['node']
-        m1 = repo1.manifest().next()['node']
+        m0 = repo0.raw_manifest()
+        m1 = repo1.raw_manifest()
 
         self.assertEqual(m0, m1, 'revision mismatch between clone')
 
@@ -219,7 +219,7 @@ class SandboxTestCase(unittest.TestCase):
         node = repo1._repo.changelog.node(1)
         repo1.clone(dest[2], node)
         repo2 = Storage(dest[2])
-        self.assertEqual(repo2._repo.changelog.count(), 2)
+        self.assertEqual(len(repo2._repo.changelog), 2)
         #self.sandbox.add_file_content('file1', self.files[1])  # rev1
         ff = open(join(repo2._rpath, 'file1')).read()
         self.assertEqual(ff, self.files[1],
