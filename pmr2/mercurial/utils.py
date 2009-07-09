@@ -25,3 +25,49 @@ def filter(input, filter):
         return templatefilters.filters[filter](input)
     except:
         return input
+
+def tmpl(name, **kw):
+    kw[''] = name
+    yield kw
+
+
+file_listings = ['manifest']
+
+def add_aentries(d, datefmt='isodate'):
+    """\
+    Process iterator returned by our custom template
+    """
+
+    d = d.next()
+
+    if d[''] not in file_listings:
+        return tmpl(d[''], **d)
+
+    dirlist = d['dentries']
+    filelist = d['fentries']
+
+    def fulllist(**map):
+        for i in dirlist():
+            # remove first slash
+            i['file'] = i['path'][1:]
+            i['permissions'] = 'drwxr-xr-x'
+            yield i
+        for i in filelist():
+            i['date'] = filter(i['date'], datefmt)
+            i['permissions'] = filter(i['permissions'], 'permissions')
+            yield i
+
+    return tmpl(d[''],
+                rev=d['rev'],
+                node=d['node'],
+                path=d['path'],
+                up=d['up'],
+                upparity=d['upparity'],
+                fentries=d['fentries'],
+                dentries=d['dentries'],
+                aentries=lambda **x: fulllist(**x),
+                archives=d['archives'],
+                tags=d['tags'],
+                inbranch=d['inbranch'],
+                branches=d['branches'],
+               )

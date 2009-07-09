@@ -6,8 +6,9 @@ from mercurial import util, cmdutil
 from mercurial.context import filectx, workingfilectx
 from mercurial.i18n import _
 import mercurial.hgweb.hgweb_mod
-from mercurial.hgweb.hgweb_mod import _up
-from mercurial.hgweb.common import get_mtime, staticfile, style_map, paritygen
+from mercurial.hgweb import webcommands
+from mercurial.hgweb import webutil
+from mercurial.hgweb.common import get_mtime, staticfile, paritygen
 
 # not overriding builtin hex function like Mercurial does.
 from binascii import hexlify
@@ -33,6 +34,9 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
     Customized hgweb_mod.hgweb class to include other vital methods
     required to generate usable output from other Mercurial features.
     """
+
+    # XXX deprecated, do not use.
+    # TODO move methods into custom webcommands module.
 
     def __init__(self, *a, **kw):
         super(hgweb_ext, self).__init__(*a, **kw)
@@ -129,7 +133,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
                      rev=ctx.rev(),
                      node=hex_(node),
                      path=abspath,
-                     up=_up(abspath),
+                     up=webutil.up(abspath),
                      upparity=parity.next(),
                      fentries=filelist,
                      dentries=dirlist,
@@ -162,7 +166,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
 
         return tmpl("filerevision",
                     file=f,
-                    path=_up(f),
+                    path=webutil.up(f),
                     text=lines(),
                     rev=fctx.rev(),
                     node=hex_(fctx.node()),
@@ -204,7 +208,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
         if isinstance(fctx, workingfilectx):
             return tmpl("filerevision",
                         file=f,
-                        path=_up(f),
+                        path=webutil.up(f),
                         text=lines(),
                         rev=fctx.rev(),
                         node=hex_(fctx.node()),
@@ -220,7 +224,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
         else:
             return tmpl("filerevision",
                         file=f,
-                        path=_up(f),
+                        path=webutil.up(f),
                         text=lines(),
                         rev=fctx.rev(),
                         node=hex_(fctx.node()),
@@ -235,7 +239,7 @@ class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
 
     def manifest(self, tmpl, ctx, path, datefmt='isodate'):
 
-        d = mercurial.hgweb.hgweb_mod.hgweb.manifest(self, tmpl, ctx, path)
+        d = webcommands.manifest(self, tmpl, ctx)
         d = d.next()
 
         dirlist = d['dentries']

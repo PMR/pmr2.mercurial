@@ -1,14 +1,18 @@
 import zope.interface
 from zope.publisher.interfaces import NotFound, IPublisherRequest
 
-from pmr2.mercurial import Storage, Sandbox, utils
+from mercurial.hgweb import webcommands, webutil
+from mercurial.hgweb.common import ErrorResponse
+
+from pmr2.mercurial import WebStorage, Storage, Sandbox, utils
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.exceptions import *
+from pmr2.mercurial.utils import tmpl
 
 
 class PMR2StorageAdapter(Storage):
     """\
-    To adapt a PMR2 content object to a Storage object.
+    To adapt a PMR2 content object to a standard Storage object.
 
     It's up to subclasses of this class to register themselves as 
     adapters.
@@ -36,9 +40,10 @@ class PMR2StorageAdapter(Storage):
         return Storage.raw_manifest(self, self._rev)
 
 
-class PMR2StorageRequestAdapter(PMR2StorageAdapter):
+class PMR2StorageRequestAdapter(WebStorage):
     """\
-    To adapt a PMR2 content object to a Storage object.
+    To adapt a PMR2 content object to a WebStorage object, as it is
+    planned for use with a request.
 
     This adapter is more suited from within views.
     """
@@ -54,10 +59,20 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
         """
 
         # XXX we assume request has this
+        self.context = context
+        root = context.get_path()
         self.request = request
         self._rev = request.get('rev', None)
         self._path = '/'.join(request.get('request_subpath', ()))
-        PMR2StorageAdapter.__init__(self, context, self._rev)
+
+        # build hgweb internal structures from the values we already
+        # processed.
+        if self._rev:
+            request.form['node'] = [request.get('rev')]
+        if self._path:
+            request.form['file'] = request.get('request_subpath')
+
+        WebStorage.__init__(self, root, self._rev)
 
     @property
     def path(self):
@@ -72,19 +87,45 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
         Returns manifest at path.
         """
 
-        if path is None:
-            path = self.path
-        result = Storage.manifest(self, self.rev, path).next()
+        result = WebStorage.manifest(self, self.request).next()
         return result
+
+    @property
+    def file(self):
+        """\
+        Returns file or manifest at path.
+        """
+
+        result = WebStorage.file(self, self.request).next()
+        return result
+
+    @property
+    def rawfile(self):
+        """\
+        Returns file or manifest at path.
+        """
+
+        req = self.request
+        path = webutil.cleanpath(self.repo, req.form.get('file', [''])[0])
+        if not path:
+            raise PathNotFound("path '%s' not found" % path)
+        try:
+            fctx = webutil.filectx(self.repo, req)
+        except error.LookupError, inst:
+            raise
+        path = fctx.path()
+        text = fctx.data()
+        #mt = mimetypes.guess_type(path)[0]
+        #if mt is None:
+        #    mt = binary(text) and 'application/octet-stream' or 'text/plain'
+        return text
 
     def get_fileinfo(self, path=None):
         """\
         Returns file information at path.
         """
 
-        if path is None:
-            path = self.path
-        result = Storage.fileinfo(self, self.rev, path).next()
+        result = WebStorage.fileinfo(self, self.rev, path).next()
         result['date'] = utils.filter(result['date'], 'isodate')
         return result
 
@@ -98,38 +139,3 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
             rev = self.rev
         # XXX valid datefmt values might need to be documented/checked
         return self.log(rev, branch, shortlog, datefmt, maxchanges).next()
-
-    @property
-    def file(self):
-        """\
-        Returns content at path.
-        """
-
-        return Storage.file(self, self._rev, self._path)
-
-    @property
-    def fileinfo(self):
-        """\
-        Returns content at path.
-        """
-
-        if not hasattr(self, '_fileinfo'):
-            try:
-                self._fileinfo = self.get_fileinfo()
-            except PathNotFound:
-                self._fileinfo = None
-        return self._fileinfo
-
-    @property
-    def manifest(self):
-        """\
-        Returns content at path.
-        """
-
-        if not hasattr(self, '_manifest'):
-            try:
-                self._manifest = self.get_manifest()
-            except PathNotFound:
-                self._manifest = None
-        return self._manifest
-
