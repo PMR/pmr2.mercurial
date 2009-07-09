@@ -28,6 +28,13 @@ class PMR2StorageAdapter(Storage):
         root = context.get_path()
         Storage.__init__(self, root, rev)
 
+    def get_full_manifest(self):
+        """\
+        Returns full manifest listing.
+        """
+
+        return Storage.raw_manifest(self, self._rev)
+
 
 class PMR2StorageRequestAdapter(PMR2StorageAdapter):
     """\
@@ -59,13 +66,6 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
     @property
     def short_rev(self):
         return utils.filter(self.rev, 'short')
-
-    def get_full_manifest(self):
-        """\
-        Returns full manifest listing.
-        """
-
-        return Storage.raw_manifest(self, self._rev)
 
     def get_manifest(self, path=None):
         """\
