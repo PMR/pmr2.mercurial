@@ -324,9 +324,10 @@ class WebStorage(hgweb, Storage):
         Storage.__init__(self, rpath, ctx)
         hgweb.__init__(self, self._repo)
 
-    def file(self, request, datefmt='isodate'):
+    def structure(self, request, datefmt='isodate'):
         """\
-        This method is implemented as a wrapper around webcommands.file.
+        This method is implemented as a wrapper around webcommands.file
+        and returns a structure.
         """
 
         try:

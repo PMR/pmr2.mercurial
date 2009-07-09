@@ -10,7 +10,7 @@ from pmr2.mercurial.exceptions import *
 from pmr2.mercurial.utils import tmpl
 
 
-class PMR2StorageAdapter(Storage):
+class PMR2StorageAdapter(WebStorage):
     """\
     To adapt a PMR2 content object to a standard Storage object.
 
@@ -30,14 +30,7 @@ class PMR2StorageAdapter(Storage):
 
         self.context = context
         root = context.get_path()
-        Storage.__init__(self, root, rev)
-
-    def get_full_manifest(self):
-        """\
-        Returns full manifest listing.
-        """
-
-        return Storage.raw_manifest(self, self._rev)
+        WebStorage.__init__(self, root, rev)
 
 
 class PMR2StorageRequestAdapter(WebStorage):
@@ -90,6 +83,8 @@ class PMR2StorageRequestAdapter(WebStorage):
         result = WebStorage.manifest(self, self.request).next()
         return result
 
+    _structure = WebStorage.structure
+
     @property
     def structure(self):
         """\
@@ -97,7 +92,7 @@ class PMR2StorageRequestAdapter(WebStorage):
         """
 
         # TODO? cache results?
-        result = WebStorage.file(self, self.request).next()
+        result = self._structure(self.request).next()
         return result
 
     @property
