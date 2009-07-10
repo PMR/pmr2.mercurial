@@ -5,12 +5,12 @@ from cStringIO import StringIO
 from mercurial import ui, hg, revlog, demandimport, cmdutil, util, context
 from mercurial.i18n import _
 
-from mercurial.hgweb.hgweb_mod import hgweb
+from mercurial.hgweb.hgweb_mod import hgweb, perms
 
 # Mercurial exceptions to catch
 from mercurial.error import RepoError, LookupError, LockHeld
 from mercurial.util import Abort
-from mercurial.hgweb.common import ErrorResponse
+from mercurial.hgweb.common import ErrorResponse, HTTP_NOT_FOUND
 import mercurial.hgweb.protocol
 from mercurial.hgweb.request import wsgirequest
 from mercurial.hgweb import webcommands
@@ -344,59 +344,11 @@ class WebStorage(hgweb, Storage):
         Process the request object and returns output.
         """
 
-        # XXX this will need to be rewritten to be more WSGI friendly.
-
-        if request.REQUEST_METHOD != 'GET':
-            # We need to do our own parsing, ZPublisher ignores POST.
-            # This line will be a problem if Mercurial decides to do
-            # POST properly (i.e. not use QUERY_STRING).
-            items = cgi.parse_qsl(request.QUERY_STRING)
-            request.form.update(dict(items))
-
-        command = 'cmd' in request and request['cmd'] or None
-
-        if not command:
-            raise UnsupportedCommand('unspecified command')
-        try:
-            method = getattr(mercurial.hgweb.protocol, command)
-        except AttributeError:
-            raise UnsupportedCommand('%s is unsupported' % command)
-
-        # we are in, so get back to the start
+        protocol = mercurial.hgweb.protocol
         request.stdin.seek(0)
-
-        # XXX the request object *should* be WSGI compliant as Mercurial
-        # supports it, but we are going to emulate it for now.
         env = dict(request.environ)
-        # 'REQUEST_URI' is missing but seems to be unused
-        env['REMOTE_HOST'] = env['REMOTE_ADDR']
-
-        # emulate wsgi environment
-        env['wsgi.version'] = (1, 0)
-        # environment variable has https
-        env['wsgi.url_scheme'] = request.base.split(':')[0]  # self.url_scheme
-        env['wsgi.input'] = request.stdin # self.rfile
-        env['wsgi.errors'] = StringIO() #_error_logger(self)
-        env['wsgi.multithread'] = True  # XXX guess
-        env['wsgi.multiprocess'] = True  # same as above
-        env['wsgi.run_once'] = True
-
-        # build hgweb object.
-        hw = hgweb(self._repo)
-        hw.close_connection = True
-        hw.saved_status = None
-        hw.saved_headers = []
-        hw.sent_headers = False
-        hw.length = None
-
         headers_set = []
         headers_sent = []
-
-        # copied from mercurial.hgweb.wsgicgi, which in turn is copied
-        # from PEP-0333 
-        # http://www.python.org/dev/peps/pep-0333/#the-server-gateway-side
-
-        out = StringIO()
 
         def write(data):
             if not headers_set:
@@ -405,6 +357,8 @@ class WebStorage(hgweb, Storage):
             elif not headers_sent:
                 # Before the first output, send the stored headers
                 status, response_headers = headers_sent[:] = headers_set
+                status, code = status.split(' ', 1)
+                request.response.setStatus(status, code)
                 for header in response_headers:
                     # let zope deal with the header.
                     request.response.setHeader(*header)
@@ -426,9 +380,66 @@ class WebStorage(hgweb, Storage):
             headers_set[:] = [status, response_headers]
             return write
 
-        # prepare the environment, run it, return result manually.
-        env = wsgirequest(env, start_response)
-        method(hw, env)
+        # XXX this is a hgweb object already.  While run_wsgi has what
+        # we need, Zope/repoze/Plone handles some of the request stuff
+        # already, so we just skip some of the parsing steps.
+
+        out = StringIO()
+        req = wsgirequest(env, start_response)
+
+        self.refresh()
+
+        req.url = req.env['SCRIPT_NAME']
+        if not req.url.endswith('/'):
+            req.url += '/'
+        if 'REPO_NAME' in req.env:
+            req.url += req.env['REPO_NAME'] + '/'
+
+        if 'PATH_INFO' in req.env:
+            parts = req.env['PATH_INFO'].strip('/').split('/')
+            repo_parts = req.env.get('REPO_NAME', '').split('/')
+            if parts[:len(repo_parts)] == repo_parts:
+                parts = parts[len(repo_parts):]
+            query = '/'.join(parts)
+        else:
+            query = req.env['QUERY_STRING'].split('&', 1)[0]
+            query = query.split(';', 1)[0]
+
+        # process this if it's a protocol request
+        # protocol bits don't need to create any URLs
+        # and the clients always use the old URL structure
+
+        cmd = req.form.get('cmd', [''])[0]
+        if cmd and cmd in protocol.__all__:
+            # XXX not sure why?
+            #if query:
+            #    raise ErrorResponse(HTTP_NOT_FOUND)
+            try:
+                if cmd in perms:
+                    try:
+                        self.check_perm(req, perms[cmd])
+                    except ErrorResponse, inst:
+                        if cmd == 'unbundle':
+                            req.drain()
+                        raise
+                method = getattr(protocol, cmd)
+                #return method(self.repo, req)
+                content = method(self.repo, req)
+            except ErrorResponse, inst:
+                req.respond(inst, protocol.HGTYPE)
+                # XXX doing write here because the other methods expect
+                # output.
+                write('0\n')
+                if not inst.message:
+                    return []
+                write('%s\n' % inst.message,)
+                return out.getvalue()
+        else:
+            raise UnsupportedCommand('%s is unsupported' % cmd)
+
+        # XXX writing value out here because method expects it.
+        for chunk in content:
+            write(chunk)
         return out.getvalue()
 
 
