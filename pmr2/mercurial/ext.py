@@ -22,7 +22,12 @@ demandimport.disable()
 from pmr2.mercurial import utils
 
 __all__ = [
-    'hgweb_ext',
+    'hex_',
+    'hg_rename',
+    'hg_copy',
+    'changelog',
+    'filerevision',
+    'status',
 ]
 
 def hex_(data):
@@ -30,149 +35,6 @@ def hex_(data):
         return ''  # XXX nullid prefered?
     else:
         return hexlify(data)
-
-
-class hgweb_ext(mercurial.hgweb.hgweb_mod.hgweb):
-    """\
-    Customized hgweb_mod.hgweb class to include other vital methods
-    required to generate usable output from other Mercurial features.
-    """
-
-    # XXX deprecated, do not use.
-    # TODO move methods into custom webcommands module.
-
-    def __init__(self, *a, **kw):
-        super(hgweb_ext, self).__init__(*a, **kw)
-        self.refresh()
-    def filecwd(self, tmpl, fctx):
-        """\
-        No change from Mercurial 1.0.2, except for usage of hexlify that
-        can take `None` as input.
-        """
-        f = fctx.path()
-        text = fctx.data()
-        fl = fctx.filelog()
-        n = fctx.filenode()
-        parity = paritygen(self.stripecount)
-
-        if util.binary(text):
-            mt = mimetypes.guess_type(f)[0] or 'application/octet-stream'
-            text = '(binary:%s)' % mt
-
-        def lines():
-            for lineno, t in enumerate(text.splitlines(1)):
-                yield {"line": t,
-                       "lineid": "l%d" % (lineno + 1),
-                       "linenumber": "% 6d" % (lineno + 1),
-                       "parity": parity.next()}
-
-        return tmpl("filerevision",
-                    file=f,
-                    path=webutil.up(f),
-                    text=lines(),
-                    rev=fctx.rev(),
-                    node=hex_(fctx.node()),
-                    author=fctx.user(),
-                    date=fctx.date(),
-                    desc=fctx.description(),
-                    branch=self.nodebranchnodefault(fctx),
-                    parent=self.siblings(fctx.parents()),
-                    child=self.siblings(fctx.children()),
-                    rename=self.renamelink(fl, n),
-                    permissions=fctx.manifest().flags(f))
-
-    def filerevision(self, tmpl, fctx):
-        """\
-        Same as one in mercurial 1.0.2, with a modification that allows
-        passing in a working file context.
-        """
-
-        f = fctx.path()
-        text = fctx.data()
-        fl = fctx.filelog()
-        n = fctx.filenode()
-        parity = paritygen(self.stripecount)
-
-        if util.binary(text):
-            mt = mimetypes.guess_type(f)[0] or 'application/octet-stream'
-            text = '(binary:%s)' % mt
-
-        def lines():
-            for lineno, t in enumerate(text.splitlines(1)):
-                yield {"line": t,
-                       "lineid": "l%d" % (lineno + 1),
-                       "linenumber": "% 6d" % (lineno + 1),
-                       "parity": parity.next()}
-
-        # XXX might be better to override self.renamelink instead of
-        # making this conditional statement here.
-        # still need the hex_ method call.
-        if isinstance(fctx, workingfilectx):
-            return tmpl("filerevision",
-                        file=f,
-                        path=webutil.up(f),
-                        text=lines(),
-                        rev=fctx.rev(),
-                        node=hex_(fctx.node()),
-                        author=fctx.user(),
-                        date=fctx.date(),
-                        desc=fctx.description(),
-                        branch=self.nodebranchnodefault(fctx),
-                        parent=self.siblings(fctx.parents()),
-                        child=self.siblings(fctx.children()),
-                        rename=[],  # XXX figure out how to derive this
-                        permissions=fctx.manifest().flags(f))
-
-        else:
-            return tmpl("filerevision",
-                        file=f,
-                        path=webutil.up(f),
-                        text=lines(),
-                        rev=fctx.rev(),
-                        node=hex_(fctx.node()),
-                        author=fctx.user(),
-                        date=fctx.date(),
-                        desc=fctx.description(),
-                        branch=self.nodebranchnodefault(fctx),
-                        parent=self.siblings(fctx.parents()),
-                        child=self.siblings(fctx.children()),
-                        rename=self.renamelink(fl, n),
-                        permissions=fctx.manifest().flags(f))
-
-    def manifest(self, tmpl, ctx, path, datefmt='isodate'):
-
-        d = webcommands.manifest(self, tmpl, ctx)
-        d = d.next()
-
-        dirlist = d['dentries']
-        filelist = d['fentries']
-
-        def fulllist(**map):
-            for i in dirlist():
-                # remove first slash
-                i['file'] = i['path'][1:]
-                i['permissions'] = 'drwxr-xr-x'
-                yield i
-            for i in filelist():
-                i['date'] = utils.filter(i['date'], datefmt)
-                i['permissions'] = utils.filter(i['permissions'], 'permissions')
-                yield i
-
-        return tmpl(d[''],
-                    rev=d['rev'],
-                    node=d['node'],
-                    path=d['path'],
-                    up=d['up'],
-                    upparity=d['upparity'],
-                    fentries=d['fentries'],
-                    dentries=d['dentries'],
-                    aentries=lambda **x: fulllist(**x),
-                    archives=d['archives'],
-                    tags=d['tags'],
-                    inbranch=d['inbranch'],
-                    branches=d['branches'],
-                   )
-
 
 # XXX modified commands.rename from mercurial 1.3
 def hg_rename(ui, repo, *pats, **opts):
@@ -576,4 +438,3 @@ def status(web, tmpl, ctx, path, st, datefmt='isodate'):
                  archives=[], # web.archivelist(hex_(node)),
                  tags=webutil.nodetagsdict(web.repo, ctx),
                  branches=webutil.nodebranchdict(web.repo, ctx))
-
