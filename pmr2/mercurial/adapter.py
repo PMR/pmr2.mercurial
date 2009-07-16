@@ -64,7 +64,7 @@ class PMR2StorageRequestAdapter(WebStorage):
         if self._rev:
             request.form['node'] = [request.get('rev')]
         if self._path:
-            request.form['file'] = request.get('request_subpath')
+            request.form['file'] = ['/'.join(request.get('request_subpath'))]
 
         WebStorage.__init__(self, root, self._rev)
 
