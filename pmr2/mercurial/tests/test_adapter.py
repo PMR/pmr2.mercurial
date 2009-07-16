@@ -33,6 +33,8 @@ class AdapterTestCase(unittest.TestCase):
         sandbox = Sandbox(self.repodir, ctx='tip')
         self.path = dirname(__file__)
         self.filelist = ['file1', 'file2', 'file3',]
+        self.nested_name = 'nested/deep/dir/file'
+        self.nested_file = 'This is\n\na deeply nested file\n'
         self.files = [open(join(self.path, i)).read() for i in self.filelist]
         self.msg = 'added some files'
         self.user = 'Tester <test@example.com>'
@@ -44,6 +46,8 @@ class AdapterTestCase(unittest.TestCase):
         sandbox.add_file_content('file2', self.files[1])
         sandbox.add_file_content('file3', self.files[0])
         sandbox.commit('added3', 'user3 <3@example.com>')
+        sandbox.add_file_content(self.nested_name, self.nested_file)
+        sandbox.commit('added4', 'user3 <3@example.com>')
         self.repo = Storage(self.repodir, ctx='tip')
 
     def tearDown(self):
@@ -83,6 +87,31 @@ class AdapterTestCase(unittest.TestCase):
         self.assertEqual(a.structure['node'], rev2)
         fc = a.rawfile
         self.assertEqual(fc, self.files[1])
+
+        # nested file test, mocking up request_subpath
+        subpath = self.nested_name.split('/')
+        r = TestRequest(rev=rev, request_subpath=subpath)
+        a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
+        fc = a.rawfile
+        self.assertEqual(fc, self.nested_file)
+
+        # structure test
+        entry = subpath.pop()
+        r = TestRequest(rev=rev, request_subpath=subpath)
+        a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
+        struct = a.structure
+        self.assertEqual(struct[''], 'manifest')
+        result = struct['fentries']().next()
+        self.assertRaises(StopIteration, struct['dentries']().next)
+        self.assertEqual(result['basename'], entry)
+
+        entry = subpath.pop()
+        r = TestRequest(rev=rev, request_subpath=subpath)
+        a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
+        struct = a.structure
+        result = struct['dentries']().next()
+        self.assertEqual(result['basename'], entry)
+        self.assertRaises(StopIteration, struct['fentries']().next)
 
 
 def test_suite():
