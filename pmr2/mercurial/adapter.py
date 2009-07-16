@@ -3,6 +3,7 @@ from zope.publisher.interfaces import NotFound, IPublisherRequest
 
 from mercurial.hgweb import webcommands, webutil
 from mercurial.hgweb.common import ErrorResponse
+from mercurial import error
 
 from pmr2.mercurial import WebStorage, Storage, Sandbox, utils
 from pmr2.mercurial.interfaces import *
