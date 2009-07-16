@@ -23,6 +23,13 @@ from zope.component.tests import clearZCML
 # XXX assumption
 
 
+class PMR2Storage(object):
+    zope.interface.implements(IPMR2StorageBase)
+    def __init__(self, path):
+        self.path = path
+    def get_path(self):
+        return self.path
+
 class AdapterTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -49,21 +56,16 @@ class AdapterTestCase(unittest.TestCase):
         sandbox.add_file_content(self.nested_name, self.nested_file)
         sandbox.commit('added4', 'user3 <3@example.com>')
         self.repo = Storage(self.repodir, ctx='tip')
-
-    def tearDown(self):
-        shutil.rmtree(self.testdir)
-
-    def test_adapter(self):
-        class PMR2Storage(object):
-            zope.interface.implements(IPMR2StorageBase)
-            path = self.repodir
-            def get_path(self):
-                return self.path
+        self.rev = self.repo.rev
 
         clearZCML()
         xmlconfig(open(join(pmr2.mercurial.__path__[0], 'configure.zcml')))
 
-        o = PMR2Storage()
+    def tearDown(self):
+        shutil.rmtree(self.testdir)
+
+    def test_adapter_base(self):
+        o = PMR2Storage(self.repodir)
         self.assertEqual(o.get_path(), self.repodir)
         a = PMR2StorageAdapter(o)
         self.assertEqual(a._changectx(), self.repo._changectx())
@@ -81,23 +83,28 @@ class AdapterTestCase(unittest.TestCase):
         rev2 = a.structure['node']
         self.assertEqual(rev, rev2, 'hgweb revision and default not the same?')
 
-        r = TestRequest(rev=rev, request_subpath=('file1',))
+    def test_adapter_rawfile(self):
+        o = PMR2Storage(self.repodir)
+        r = TestRequest(rev=self.rev, request_subpath=('file1',))
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         self.assertNotEqual(a, None, 'adapter not registered')
-        self.assertEqual(a.structure['node'], rev2)
+        self.assertEqual(a.structure['node'], self.rev)
         fc = a.rawfile
         self.assertEqual(fc, self.files[1])
 
-        # nested file test, mocking up request_subpath
+    def test_adapter_nested_file(self):
+        o = PMR2Storage(self.repodir)
         subpath = self.nested_name.split('/')
-        r = TestRequest(rev=rev, request_subpath=subpath)
+        r = TestRequest(rev=self.rev, request_subpath=subpath)
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         fc = a.rawfile
         self.assertEqual(fc, self.nested_file)
 
-        # structure test
+    def test_adapter_nested_structure_file(self):
+        o = PMR2Storage(self.repodir)
+        subpath = self.nested_name.split('/')
         entry = subpath.pop()
-        r = TestRequest(rev=rev, request_subpath=subpath)
+        r = TestRequest(rev=self.rev, request_subpath=subpath)
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         struct = a.structure
         self.assertEqual(struct[''], 'manifest')
@@ -105,8 +112,12 @@ class AdapterTestCase(unittest.TestCase):
         self.assertRaises(StopIteration, struct['dentries']().next)
         self.assertEqual(result['basename'], entry)
 
+    def test_adapter_nested_structure_dir(self):
+        o = PMR2Storage(self.repodir)
+        subpath = self.nested_name.split('/')
         entry = subpath.pop()
-        r = TestRequest(rev=rev, request_subpath=subpath)
+        entry = subpath.pop()
+        r = TestRequest(rev=self.rev, request_subpath=subpath)
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
         struct = a.structure
         result = struct['dentries']().next()
