@@ -350,10 +350,36 @@ class WebStorage(hgweb, Storage):
             it = webcommands.file(self, request, _t)
             return utils.add_aentries(it, datefmt)
         except LookupError:
-            if not request.form.get('file', []):
-                raise RepoEmptyError('repository is empty')
+            if self.path:
+                # try to resolve submodule before giving up.
+                for subrepokey, value in self._ctx.substate.iteritems():
+                    # appending separator is safe because hg considers
+                    # it as part of the subrepo.
+                    # XXX are subrepo path separator represented 
+                    # internally in hg as '/' under Windows, too?
+                    subrepodir = subrepokey + '/'
+                    # a request path with just the folder will be on its
+                    # own.
+                    if self.path == subrepokey or \
+                            self.path.startswith(subrepodir):
+                        # sanity check, make sure link is redirectable.
+                        if not (
+                                value[0].startswith('http://') or
+                                value[0].startswith('https://')
+                            ):  # <- sadface
+                            raise SubrepoPathUnsupportedError(
+                                "subrepo path '%s' not supported" % value[0])
+                        # all good, produce subrepo info structure.
+                        newpath = self.path[len(subrepodir):]
+                        result = _t('_subrepo', **{
+                            'path': newpath,
+                            'location': value[0],
+                            'rev': value[1],
+                        })
+                        return result
+                raise PathNotFoundError("path '%s' not found" % self.path)
             else:
-                raise PathNotFoundError("path '%s' not found" % path)
+                raise RepoEmptyError('repository is empty')
 
     def process_request(self, request):
         """

@@ -14,6 +14,10 @@ class PathExistsError(PathInvalidError):
     """path exists"""
 
 
+class SubrepoPathUnsupportedError(PathInvalidError):
+    """unsupported subrepo path format"""
+
+
 class RevisionNotFoundError(ValueError):
     """revision not found"""
 
