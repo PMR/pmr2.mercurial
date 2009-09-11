@@ -2,6 +2,7 @@ import os
 import os.path
 
 from mercurial import templatefilters
+from pmr2.mercurial.exceptions import SubrepoPathUnsupportedError
 
 _rstub = '.hg'
 
@@ -30,6 +31,36 @@ def tmpl(name, **kw):
     kw[''] = name
     yield kw
 
+def match_subrepo(substate, path):
+    """
+    Given a substate dict (like result of context.substate), match path,
+    return a structure that describes what might be done.
+    """
+
+    # try to resolve submodule before giving up.
+    for subrepokey, value in substate.iteritems():
+        # appending separator is safe because hg considers
+        # it as part of the subrepo.
+        # XXX are subrepo path separator represented 
+        # internally in hg as '/' under Windows, too?
+        subrepodir = subrepokey + '/'
+        # a request path with just the folder will be on its
+        # own.
+        if path == subrepokey or path.startswith(subrepodir):
+            # sanity check, make sure link is redirectable.
+            if not (value[0].startswith('http://') or
+                    value[0].startswith('https://')
+                ):  # <- sadface
+                raise SubrepoPathUnsupportedError(
+                    "subrepo path '%s' not supported" % value[0])
+            # all good, produce subrepo info structure.
+            newpath = path[len(subrepodir):]
+            result = tmpl('_subrepo', **{
+                'path': newpath,
+                'location': value[0],
+                'rev': value[1],
+            })
+            return result
 
 file_listings = ['manifest']
 
