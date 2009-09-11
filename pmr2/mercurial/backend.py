@@ -164,6 +164,7 @@ class Storage(object):
             changeid = 'tip'
 
         try:
+            # it's possible to do self._repo[changeid]
             self._ctx = self._repo.changectx(changeid)
         except (RepoError, revlog.LookupError,):
             raise RevisionNotFoundError('revision %s not found' % changeid)
@@ -323,6 +324,21 @@ class WebStorage(hgweb, Storage):
     def __init__(self, rpath, ctx=None):
         Storage.__init__(self, rpath, ctx)
         hgweb.__init__(self, self._repo)
+
+    def parse_request(self):
+        request = self.request
+        self._rev = request.get('rev', None)
+        self._path = '/'.join(request.get('request_subpath', ()))
+        # build hgweb internal structures from the values we already
+        # processed.
+        if self._rev:
+            request.form['node'] = [request.get('rev')]
+        if self._path:
+            request.form['file'] = [self._path]
+
+    @property
+    def path(self):
+        return self._path
 
     def structure(self, request, datefmt='isodate'):
         """\

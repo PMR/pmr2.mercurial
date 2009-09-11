@@ -34,7 +34,7 @@ class PMR2StorageAdapter(WebStorage):
         WebStorage.__init__(self, root, rev)
 
 
-class PMR2StorageRequestAdapter(WebStorage):
+class PMR2StorageRequestAdapter(PMR2StorageAdapter):
     """\
     To adapt a PMR2 content object to a WebStorage object, as it is
     planned for use with a request.
@@ -52,25 +52,9 @@ class PMR2StorageRequestAdapter(WebStorage):
             The request
         """
 
-        # XXX we assume request has this
-        self.context = context
-        root = context.get_path()
         self.request = request
-        self._rev = request.get('rev', None)
-        self._path = '/'.join(request.get('request_subpath', ()))
-
-        # build hgweb internal structures from the values we already
-        # processed.
-        if self._rev:
-            request.form['node'] = [request.get('rev')]
-        if self._path:
-            request.form['file'] = ['/'.join(request.get('request_subpath'))]
-
-        WebStorage.__init__(self, root, self._rev)
-
-    @property
-    def path(self):
-        return self._path
+        self.parse_request()
+        PMR2StorageAdapter.__init__(self, context, self._rev)
 
     @property
     def short_rev(self):
