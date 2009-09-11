@@ -17,21 +17,21 @@ class RepositoryInitTestCase(unittest.TestCase):
 
     def test_init_failed(self):
         # testing init would fail on a directory not managed by hg
-        self.assertRaises(PathInvalid, Storage, self.repodir)
+        self.assertRaises(PathInvalidError, Storage, self.repodir)
 
     def test_create_failed(self):
         # existing directory
-        self.assertRaises(PathExists, Storage.create, self.repodir)
+        self.assertRaises(PathExistsError, Storage.create, self.repodir)
         # existing file, causing path to be invalid.
         tf = tempfile.mkstemp()
         os.close(tf[0])  # close the descriptor that was opened above
         invalid = tf[1]
         invalid2 = join(invalid, 'nested')
         invalid3 = join(invalid, 'nested', 'evendeeper')
-        self.assertRaises(PathInvalid, Storage.create, invalid, False)
-        self.assertRaises(PathInvalid, Storage.create, invalid2, False)
+        self.assertRaises(PathInvalidError, Storage.create, invalid, False)
+        self.assertRaises(PathInvalidError, Storage.create, invalid2, False)
         # try to create a new one
-        self.assertRaises(PathInvalid, Storage.create, invalid3, True)
+        self.assertRaises(PathInvalidError, Storage.create, invalid3, True)
         os.unlink(invalid)
 
     def test_create_success1(self):
@@ -66,14 +66,14 @@ class RepositoryTestCase(unittest.TestCase):
         self.assertEqual(ctx0.node(), ctx1.node())
         self.assertNotEqual(ctx0, None, msg='failed to get context')
         self.assertEqual(ctx0.branch(), 'default', msg='unexpected context')
-        self.assertRaises(RevisionNotFound, self.workspace._changectx, 'fail')
+        self.assertRaises(RevisionNotFoundError, self.workspace._changectx, 'fail')
 
     def test_raw_manifest_empty(self):
         # empty manifest
         self.assertEqual(self.workspace.raw_manifest(), {})
 
     def test_file_path_not_found(self):
-        self.assertRaises(PathNotFound, 
+        self.assertRaises(PathNotFoundError, 
                 self.workspace.file, 'tip', path='no')
 
 
@@ -112,7 +112,7 @@ class RepositorySandboxTestCase(unittest.TestCase):
         self.assertEqual(f, self.files[0])
 
     def test_fileinfo_failure(self):
-        self.assertRaises(PathNotFound, self.repo.fileinfo, path='file4')
+        self.assertRaises(PathNotFoundError, self.repo.fileinfo, path='file4')
 
     def test_fileinfo_success(self):
         log = [i for i in self.repo.log().next()['entries']()]
@@ -161,7 +161,7 @@ class SandboxTestCase(unittest.TestCase):
         invalidpath2 = join('a', 'b', pd, pd, pd, 'invalidpath')
         paths = (elsewhere, outside, invalidpath, invalidpath2,)
         for i in paths:
-            self.assertRaises(PathInvalid, self.sandbox.add_file_content, i, '')
+            self.assertRaises(PathInvalidError, self.sandbox.add_file_content, i, '')
 
     def test_add_file_content_success(self):
         # testing adding of file.
@@ -184,7 +184,7 @@ class SandboxTestCase(unittest.TestCase):
         self.assertRaises(TypeError, self.sandbox.clone, None)
         fakedir = tempfile.mkdtemp()
         # can't overwrite any existing destination.
-        self.assertRaises(PathExists, self.sandbox.clone, fakedir)
+        self.assertRaises(PathExistsError, self.sandbox.clone, fakedir)
         os.rmdir(fakedir)
 
     def test_clone_success(self):
@@ -213,7 +213,7 @@ class SandboxTestCase(unittest.TestCase):
                 'file content in working copy mismatch between clone')
 
         # definitely not an existing rev
-        self.assertRaises(RevisionNotFound, repo1.clone, dest[2], ['zzz'])
+        self.assertRaises(RevisionNotFoundError, repo1.clone, dest[2], ['zzz'])
 
         # cloning up to an existing rev
         node = repo1._repo.changelog.node(1)
@@ -267,7 +267,7 @@ class SandboxTestCase(unittest.TestCase):
 
     def test_fileinfo_failure(self):
         self._demo()
-        self.assertRaises(PathNotFound, self.sandbox.fileinfo, path='file4')
+        self.assertRaises(PathNotFoundError, self.sandbox.fileinfo, path='file4')
 
     def test_fileinfo_success(self):
         self._demo()
@@ -316,11 +316,11 @@ class SandboxTestCase(unittest.TestCase):
 
     def test_mkdir(self):
         # invalid parent path
-        self.assertRaises(PathInvalid, self.sandbox.mkdir, join(os.pardir, '1'))
+        self.assertRaises(PathInvalidError, self.sandbox.mkdir, join(os.pardir, '1'))
 
         # outside repo
         fakedir = tempfile.mkdtemp()
-        self.assertRaises(PathInvalid, self.sandbox.mkdir, fakedir)
+        self.assertRaises(PathInvalidError, self.sandbox.mkdir, fakedir)
         os.rmdir(fakedir)
 
         self.assert_(self.sandbox.mkdir('1'))
@@ -338,7 +338,7 @@ class SandboxTestCase(unittest.TestCase):
     def test_pull_failure(self):
         self._demo()
         # fail on no valid source.
-        self.assertRaises(RepoNotFound, self.sandbox.pull)
+        self.assertRaises(RepoNotFoundError, self.sandbox.pull)
 
     def test_pull_success(self):
         # Testing pulling
@@ -392,7 +392,7 @@ class SandboxTestCase(unittest.TestCase):
     def test_push_failure(self):
         self._demo()
         # push nowhere
-        self.assertRaises(RepoNotFound, self.sandbox.push)
+        self.assertRaises(RepoNotFoundError, self.sandbox.push)
 
         dest = [join(self.testdir, str(i)) for i in xrange(3)]
         self.sandbox.clone(dest[0])
@@ -419,7 +419,7 @@ class SandboxTestCase(unittest.TestCase):
     def test_push_success(self):
         self._demo()
         # push nowhere
-        self.assertRaises(RepoNotFound, self.sandbox.push)
+        self.assertRaises(RepoNotFoundError, self.sandbox.push)
 
         dest = [join(self.testdir, str(i)) for i in xrange(3)]
         self.sandbox.clone(dest[0])
@@ -512,7 +512,7 @@ class SandboxTestCase(unittest.TestCase):
         ps = os.sep
         self.sandbox.add_file_content('file1', self.files[0])
         # destination not in repo
-        self.assertRaises(PathInvalid,
+        self.assertRaises(PathInvalidError,
                 self.sandbox.rename, 'file1', join(pd, 'move1'))
         # invalid type for dest
         self.assertRaises(TypeError,
@@ -522,12 +522,12 @@ class SandboxTestCase(unittest.TestCase):
 
         # can't overwrite file
         self.sandbox.add_file_content('move1', self.files[0])
-        self.assertRaises(PathNotDir,
+        self.assertRaises(PathNotDirError,
                 self.sandbox.rename, ['file1'], 'move1')
         self.sandbox.add_file_content('file2', self.files[0])
-        self.assertRaises(PathExists,
+        self.assertRaises(PathExistsError,
                 self.sandbox.rename, ['file1', 'file2'], 'move1')
-        self.assertRaises(PathInvalid,
+        self.assertRaises(PathInvalidError,
                 self.sandbox.rename, ['file1', 'file2'],
                 join('move1', 'move2'))
 

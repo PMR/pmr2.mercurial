@@ -105,7 +105,7 @@ class PMR2StorageRequestAdapter(WebStorage):
         req = self.request
         path = webutil.cleanpath(self.repo, req.form.get('file', [''])[0])
         if not path:
-            raise PathNotFound("path '%s' not found" % path)
+            raise PathNotFoundError("path '%s' not found" % path)
         try:
             fctx = webutil.filectx(self.repo, req)
         except error.LookupError, inst:

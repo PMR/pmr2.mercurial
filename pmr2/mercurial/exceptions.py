@@ -1,30 +1,30 @@
-class PathInvalid(ValueError):
+class PathInvalidError(ValueError):
     """path invalid"""
 
 
-class PathNotDir(PathInvalid):
+class PathNotDirError(PathInvalidError):
     """path not a directory"""
 
 
-class PathNotFound(PathInvalid):
+class PathNotFoundError(PathInvalidError):
     """path not found"""
 
 
-class PathExists(PathInvalid):
+class PathExistsError(PathInvalidError):
     """path exists"""
 
 
-class RevisionNotFound(ValueError):
+class RevisionNotFoundError(ValueError):
     """revision not found"""
 
 
-class RepoEmpty(ValueError):
+class RepoEmptyError(ValueError):
     """repository empty"""
 
 
-class RepoNotFound(ValueError):
+class RepoNotFoundError(ValueError):
     """repository not found"""
 
 
-class UnsupportedCommand(AttributeError):
+class UnsupportedCommandError(AttributeError):
     """unsupported hgweb command"""

@@ -98,7 +98,7 @@ class Storage(object):
         except RepoError:
             # Repository initializing error.
             # XXX should include original traceback
-            raise PathInvalid('repository does not exist at path')
+            raise PathInvalidError('repository does not exist at path')
 
         self._changectx(ctx)
 
@@ -127,12 +127,12 @@ class Storage(object):
 
         if create_dir:
             if os.path.isdir(path):
-                raise PathExists('directory already exist; '
+                raise PathExistsError('directory already exist; '
                         'cannot create a new repository in existing directory')
             try:
                 os.makedirs(path, mode=0700)
             except OSError:
-                raise PathInvalid('repository directory cannot be created')
+                raise PathInvalidError('repository directory cannot be created')
 
         result = False
         try:
@@ -147,7 +147,7 @@ class Storage(object):
         except:
             # XXX should include original traceback
             # XXX assuming to be invalid path
-            raise PathInvalid("couldn't create repository at path")
+            raise PathInvalidError("couldn't create repository at path")
 
         return result
 
@@ -166,7 +166,7 @@ class Storage(object):
         try:
             self._ctx = self._repo.changectx(changeid)
         except (RepoError, revlog.LookupError,):
-            raise RevisionNotFound('revision %s not found' % changeid)
+            raise RevisionNotFoundError('revision %s not found' % changeid)
         return self._ctx
 
     def branches(self):
@@ -191,7 +191,7 @@ class Storage(object):
         dest = os.path.normpath(dest)
 
         if os.path.exists(dest):
-            raise PathExists('dest already exists')
+            raise PathExistsError('dest already exists')
 
         pdir = os.path.split(dest)[0]
         if not os.path.exists(pdir):
@@ -199,14 +199,14 @@ class Storage(object):
             try:
                 os.makedirs(pdir, mode=0700)
             except:
-                raise PathInvalid(
+                raise PathInvalidError(
                         'cannot create directory with specified path')
 
         if rev:
             try:
                 rev = [self._repo.lookup(rev)]
             except:
-                raise RevisionNotFound('revision %s not found' % rev)
+                raise RevisionNotFoundError('revision %s not found' % rev)
 
         clone_result = hg.clone(self._ui, source=self._rpath, dest=dest, 
                 rev=rev, update=update)
@@ -278,13 +278,13 @@ class Storage(object):
         Returns contents of file.
         """
         if not path:
-            raise PathNotFound('path not found')
+            raise PathNotFoundError('path not found')
 
         ctx = self._changectx(rev)
         try:
             return ctx.filectx(path)
         except revlog.LookupError:
-            raise PathNotFound("path '%s' not found" % path)
+            raise PathNotFoundError("path '%s' not found" % path)
 
     def file(self, rev=None, path=None):
         fctx = self._filectx(rev, path)
@@ -335,9 +335,9 @@ class WebStorage(hgweb, Storage):
             return utils.add_aentries(it, datefmt)
         except LookupError:
             if not request.form.get('file', []):
-                raise RepoEmpty('repository is empty')
+                raise RepoEmptyError('repository is empty')
             else:
-                raise PathNotFound("path '%s' not found" % path)
+                raise PathNotFoundError("path '%s' not found" % path)
 
     def process_request(self, request):
         """
@@ -435,7 +435,7 @@ class WebStorage(hgweb, Storage):
                 write('%s\n' % inst.message,)
                 return out.getvalue()
         else:
-            raise UnsupportedCommand('%s is unsupported' % cmd)
+            raise UnsupportedCommandError('%s is unsupported' % cmd)
 
         # XXX writing value out here because method expects it.
         for chunk in content:
@@ -481,7 +481,7 @@ class Sandbox(Storage):
         else:
             fn = os.path.normpath(os.path.join(self._rpath, name))
         if not fn.startswith(self._rpath):
-            raise PathInvalid('supplied path is outside repository')
+            raise PathInvalidError('supplied path is outside repository')
         return fn
 
     def _filter_paths(self, paths):
@@ -572,7 +572,7 @@ class Sandbox(Storage):
 
         fctx = self._filectx(rev, path)
         if rev is _cwd and path not in fctx.manifest():
-            raise PathNotFound("path '%s' not found" % path)
+            raise PathNotFoundError("path '%s' not found" % path)
         hw = hgweb(self._repo)
         return ext.filerevision(hw, _t, fctx)
 
@@ -590,10 +590,10 @@ class Sandbox(Storage):
             try:
                 os.makedirs(fn, mode=0700)
             except:  # OSError:
-                raise PathInvalid(
+                raise PathInvalidError(
                         'cannot create directory with specified path')
         elif not os.path.isdir(fn):
-            raise PathExists('cannot create directory; '
+            raise PathExistsError('cannot create directory; '
                                     'path already exists')
         return True
 
@@ -626,7 +626,7 @@ class Sandbox(Storage):
         # XXX could implement pull up to specific revs
         source, revs, checkout = hg.parseurl(source, [])
         if source == 'default':
-            raise RepoNotFound('no suitable repository found')
+            raise RepoNotFoundError('no suitable repository found')
 
         other = hg.repository(self._ui, source)
         self._ui.status('pulling from %s\n' % (source))
@@ -670,7 +670,7 @@ class Sandbox(Storage):
                                 dest or 'default'), rev)
 
         if dest in ('default', 'default-push',):
-            raise RepoNotFound('no suitable target found')
+            raise RepoNotFoundError('no suitable target found')
         other = hg.repository(self._ui, dest)
         self._ui.status('pushing to %s\n' % (dest))
         if revs:
@@ -740,7 +740,7 @@ class Sandbox(Storage):
             return [], []
         if c == 1:
             if os.path.exists(f_dest) and not os.path.isdir(f_dest):
-                raise PathNotDir(
+                raise PathNotDirError(
                         'destination exists and is not a directory')
                 # in UI, it could prompt the user that the dest file 
                 # will be overwritten, and implement it as delete of 
