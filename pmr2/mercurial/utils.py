@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from mercurial import templatefilters
+from mercurial import archival, templatefilters
 from pmr2.mercurial.exceptions import SubrepoPathUnsupportedError
 
 _rstub = '.hg'
@@ -102,3 +102,7 @@ def add_aentries(d, datefmt='isodate'):
                 inbranch=d['inbranch'],
                 branches=d['branches'],
                )
+
+def archive(repo, dest, node, kind, decode=True, matchfn=None,
+            prefix=None, mtime=None):
+    archival.archive(repo, dest, node, kind, decode, matchfn, prefix, mtime)

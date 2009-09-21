@@ -1,4 +1,5 @@
 import os
+import re
 import cgi
 import ConfigParser
 from cStringIO import StringIO
@@ -324,6 +325,34 @@ class WebStorage(hgweb, Storage):
     def __init__(self, rpath, ctx=None):
         Storage.__init__(self, rpath, ctx)
         hgweb.__init__(self, self._repo)
+
+    def archive(self, request, rev, type_):
+        """\
+        archive the repo.  based on webcommands.archive
+        """
+
+        # figuring out names, setting headers as per the zope stack.
+        reponame = re.sub(r"\W+", "-", os.path.basename(self._rpath))
+        # skipping the part on deriving friendly branch names...
+        arch_version = utils.filter(self.rev, 'short')
+        name = "%s-%s" % (reponame, arch_version)
+        mimetype, artype, extension, encoding = hgweb.archive_specs[type_]
+        headers = [
+            ('Content-Type', mimetype),
+            ('Content-Disposition', 'attachment; filename=%s%s' % (
+                name, extension))
+        ]
+        if encoding:
+            headers.append(('Content-Encoding', encoding))
+        for header in headers:
+            request.response.setHeader(*header)
+
+        # actual archive part
+        out = StringIO()
+        utils.archive(self._repo, out, rev, artype, prefix=name)
+
+        # we are done.
+        return out.getvalue()
 
     def parse_request(self):
         request = self.request
