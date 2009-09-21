@@ -1,9 +1,11 @@
 import re
-from os.path import basename
+from gzip import GzipFile
+import tarfile
+from os.path import basename, dirname
 from cStringIO import StringIO
 
 import zope.interface
-from zope.publisher.interfaces import NotFound, IPublisherRequest
+from Acquisition import aq_parent, aq_inner
 
 from mercurial.hgweb import webcommands, webutil
 from mercurial.hgweb.common import ErrorResponse
@@ -45,6 +47,14 @@ class PMR2StorageAdapter(WebStorage):
         root = context.get_path()
         WebStorage.__init__(self, root, rev)
 
+class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
+    """\
+    This adapter requires a fixed revision.
+    """
+
+    def __init__(self, context, rev):
+        PMR2StorageAdapter.__init__(self, context, rev)
+
     @property
     def _archive_name(self):
         reponame = re.sub(r"\W+", "-", basename(self._rpath))
@@ -52,7 +62,7 @@ class PMR2StorageAdapter(WebStorage):
         arch_version = filter(self.rev, 'short')
         return "%s-%s" % (reponame, arch_version)
 
-    def archive(self, type_, name=None):
+    def _archive(self, artype, name=None):
         """\
         archive the repo.  based on webcommands.archive
         """
@@ -62,24 +72,80 @@ class PMR2StorageAdapter(WebStorage):
 
         context = self.context
         rev = self.rev
-        changectx = self._ctx
+        changectx = self.ctx
 
-        # actual archive part
-        out = StringIO()
-        utils.archive(self, out, rev, type_, prefix=name)
+        dest = StringIO()
+        utils.archive(self, dest, rev, artype, prefix=name)
+        return dest
 
-        # we are done.
-        return out.getvalue()
+    def archive(self, artype, name=None):
+        if name is None:
+            name = self._archive_name
 
-    def raw_manifest(self):
-        """\
-        override, locks down to this specific revision.
-        """
+        archives = []
+        # check for subrepos (substates)
+        substate = self.ctx.substate
+        if substate:
+            if not artype in ('tar', 'tgz'):
+                raise KeyError('%s not supported for subrepo', artype)
 
-        return self._ctx.manifest()
+            # generate archives of the stuff within.
+            for location, subrepo in substate.iteritems():
+                source, rev = subrepo
+                if dirname(source) == dirname(self.context.absolute_url()):
+                    # Current we only support workspaces linked within 
+                    # the same folder.  Later maybe we can fix this to 
+                    # support other workspaces elsewhere on the site.
+
+                    # we can attempt to resolve the workspace object.
+                    wid = basename(source)
+                    folder = aq_parent(self.context)
+                    o = folder[wid]
+
+                    swp = zope.component.queryMultiAdapter((o, rev,), 
+                        name="PMR2StorageFixedRevRequest")
+                    # XXX assuming unix
+                    subname = '%s/%s' % (name, location)
+                    archives.append(swp.archive('tar', subname))
+                else:
+                    # XXX we need to raise some sort of stink, maybe
+                    # deferr an exception till later.
+                    pass
+
+            # we are only taring this up, will compress later.
+            out = self._archive('tar', name)
+            out.seek(0)
+
+            tf = tarfile.open(name, 'a:', out)
+            # join subarchives together.
+            for a in archives:
+                a.seek(0)
+                tfa = tarfile.open('import', 'r', a)
+                for i in tfa.getmembers():
+                    tf.addfile(i, tfa.extractfile(i))
+                tfa.close()
+                a.close()
+            # XXX not sure why the last file is not correctly appended
+            # it may be a bug in tarfile.
+            #tf.addfile(i)
+            tf.close()
+            out.seek(0)
+
+            if artype == 'tgz':
+                # compress
+                result = StringIO()
+                gz = GzipFile(name, 'wb', fileobj=result)
+                gz.write(out.getvalue())
+                gz.close()
+                pass
+        else:
+            # this is the core of what this method is supposed to do.
+            result = self._archive(artype, name)
+
+        return result
 
 
-class PMR2StorageRequestAdapter(PMR2StorageAdapter):
+class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
     """\
     To adapt a PMR2 content object to a WebStorage object, as it is
     planned for use with a request.
@@ -162,16 +228,21 @@ class PMR2StorageRequestAdapter(PMR2StorageAdapter):
     # overriding archive, since type is specified in the request.
 
     def archive(self):
-        # this is the part that gets captured after the version info
+        """\
+        Extends upon the PMR2StorageAdapter class to be able to archive
+        subrepos.
+        """
+
         type_ = self.path
         name = self._archive_name
-        # call parent to build the archive first.
-        if type_ not in self.archives:
-            raise KeyError('%s not a valid archive type', type_)
         mimetype, artype, extension, encoding = self.archive_specs[type_]
-        result = PMR2StorageAdapter.archive(self, artype, name)
+        # this is the core of what this method is supposed to do.
+        result = PMR2StorageFixedRevAdapter.archive(self, artype, name)
 
-        # then build the headers for the response.
+        # XXX check for type_ in archive_specs
+
+        # The extension provided by this class is to build headers, 
+        # since request is involved.
         headers = [
             ('Content-Type', mimetype),
             ('Content-Disposition', 'attachment; filename=%s%s' % (

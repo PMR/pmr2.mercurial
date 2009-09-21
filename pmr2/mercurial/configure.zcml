@@ -11,6 +11,14 @@
 
   <adapter
       for="pmr2.mercurial.interfaces.IPMR2StorageBase
+           *"
+      factory="pmr2.mercurial.adapter.PMR2StorageFixedRevAdapter"
+      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
+      name="PMR2StorageFixedRevRequest"
+      />
+
+  <adapter
+      for="pmr2.mercurial.interfaces.IPMR2StorageBase
            zope.publisher.interfaces.IPublisherRequest"
       factory="pmr2.mercurial.adapter.PMR2StorageRequestAdapter"
       provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
