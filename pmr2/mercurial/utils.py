@@ -103,6 +103,8 @@ def add_aentries(d, datefmt='isodate'):
                 branches=d['branches'],
                )
 
-def archive(repo, dest, node, kind, decode=True, matchfn=None,
+def archive(workspace, dest, node, kind, decode=True, matchfn=None,
             prefix=None, mtime=None):
+    # assuming workspace is our workspace object
+    repo = workspace._repo
     archival.archive(repo, dest, node, kind, decode, matchfn, prefix, mtime)

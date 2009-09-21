@@ -152,10 +152,10 @@ class Storage(object):
 
         return result
 
-    def _changectx(self, changeid=None):
+    def _getctx(self, changeid=None):
         """\
         A private helper method that wraps around changectx of 
-        mercurial repository; it will pick the "default" branch as 
+        mercurial repository; it will return the "default" branch as 
         according to dirlist.
         """
 
@@ -166,10 +166,18 @@ class Storage(object):
 
         try:
             # it's possible to do self._repo[changeid]
-            self._ctx = self._repo.changectx(changeid)
+            ctx = self._repo.changectx(changeid)
         except (RepoError, revlog.LookupError,):
             raise RevisionNotFoundError('revision %s not found' % changeid)
-        return self._ctx
+        return ctx
+
+    def _changectx(self, changeid=None):
+        """\
+        same as above but changes the local ctx.
+        """
+
+        self._ctx = self._getctx(changeid)
+        return self._ctx 
 
     def branches(self):
         return self._repo.branchtags()
@@ -232,7 +240,7 @@ class Storage(object):
         interface.
         """
 
-        # maybe move this into the hgweb_ext
+        # XXX maybe move this into the hgweb_ext
         def changelist(entries, **x):
             for i in entries():
                 i['date'] = getdate(i['date'])
@@ -258,7 +266,8 @@ class Storage(object):
         else:
             getdate = lambda i: utils.filter(i, datefmt)
 
-        ctx = self._changectx(rev)
+        # only looking, not changing.
+        ctx = self._getctx(rev)
         result = ext.changelog(hw, ctx, _t, shortlog)
         for i in result:
             i['orig_entries'] = i['entries']
@@ -279,6 +288,7 @@ class Storage(object):
         """\
         Returns contents of file.
         """
+        # XXX wrong exception type?
         if not path:
             raise PathNotFoundError('path not found')
 
@@ -319,42 +329,16 @@ class Storage(object):
 class WebStorage(hgweb, Storage):
     """\
     Storage methods that are meant to be used by http requests are found
-    in this class.
+    in this class, with the revision locked.  As a result, the methods 
+    in the parent class that has the revision argument have been removed.
     """
 
     def __init__(self, rpath, ctx=None):
         Storage.__init__(self, rpath, ctx)
         hgweb.__init__(self, self._repo)
 
-    def archive(self, request, rev, type_):
-        """\
-        archive the repo.  based on webcommands.archive
-        """
-
-        # figuring out names, setting headers as per the zope stack.
-        reponame = re.sub(r"\W+", "-", os.path.basename(self._rpath))
-        # skipping the part on deriving friendly branch names...
-        arch_version = utils.filter(self.rev, 'short')
-        name = "%s-%s" % (reponame, arch_version)
-        mimetype, artype, extension, encoding = hgweb.archive_specs[type_]
-        headers = [
-            ('Content-Type', mimetype),
-            ('Content-Disposition', 'attachment; filename=%s%s' % (
-                name, extension))
-        ]
-        if encoding:
-            headers.append(('Content-Encoding', encoding))
-        for header in headers:
-            request.response.setHeader(*header)
-
-        # actual archive part
-        out = StringIO()
-        utils.archive(self._repo, out, rev, artype, prefix=name)
-
-        # we are done.
-        return out.getvalue()
-
     def parse_request(self):
+        # XXX give justification why this method belongs in this class.
         request = self.request
         self._rev = request.get('rev', None)
         self._path = '/'.join(request.get('request_subpath', ()))
@@ -366,8 +350,35 @@ class WebStorage(hgweb, Storage):
             request.form['file'] = [self._path]
 
     @property
+    def ctx(self):
+        return self._ctx
+
+    @property
     def path(self):
         return self._path
+
+    def raw_manifest(self):
+        """\
+        Returns raw manifest within the current context
+        """
+
+        return self.ctx.manifest()
+
+    def _filectx(self, path=None):
+        """\
+        Returns contents of file within the current context.
+        """
+
+        if not path:
+            if not hasattr(self, '_path'):
+                # could use a better exception type/message.
+                raise AttributeError('path is unknown')
+            path = self._path
+
+        try:
+            return self.ctx.filectx(path)
+        except revlog.LookupError:
+            raise PathNotFoundError("path '%s' not found" % path)
 
     def structure(self, request, datefmt='isodate'):
         """\
@@ -380,7 +391,7 @@ class WebStorage(hgweb, Storage):
             return utils.add_aentries(it, datefmt)
         except LookupError:
             if self.path:
-                result = utils.match_subrepo(self._ctx.substate, self.path)
+                result = utils.match_subrepo(self.ctx.substate, self.path)
                 if result:
                     return result
                 raise PathNotFoundError("path '%s' not found" % self.path)
@@ -504,17 +515,17 @@ class Sandbox(Storage):
         #self.stripecount = 1
         #self.hgweb.status = _status
 
-    def _changectx(self, changeid=None):
+    def _getctx(self, changeid=None):
         """\
         Returns working context by default
         """
         # XXX attribute selection could use some work.
 
         if changeid is _cwd:
-            self._ctx = context.workingctx(self._repo)
-            return self._ctx
+            ctx = context.workingctx(self._repo)
+            return ctx
         else:
-            return Storage._changectx(self, changeid)
+            return Storage._getctx(self, changeid)
 
     def _fullpath(self, name):
         """\
