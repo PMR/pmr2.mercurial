@@ -125,9 +125,6 @@ class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
                     tf.addfile(i, tfa.extractfile(i))
                 tfa.close()
                 a.close()
-            # XXX not sure why the last file is not correctly appended
-            # it may be a bug in tarfile.
-            #tf.addfile(i)
             tf.close()
             out.seek(0)
 

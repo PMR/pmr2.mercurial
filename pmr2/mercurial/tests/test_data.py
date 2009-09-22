@@ -59,6 +59,10 @@ class DataTestCase(unittest.TestCase):
         self.archive_revs = [
             'eb2615b6ebf9a44226bba22c766bc7858e370ed9',
             'c7888f70e7ee440a561283bb7a27cc5ba9888a58',
+            'd52a32a5fa62a357ed77314888b939f0fc7c9c9b',
+            'd2759ae2454c4e0946f4d8feee60864590b2ddb0',
+            '0ab9d678be937c20c3ba4953ba49515fdad396e7',
+            'c9226c3a085546313d61413adb95d3a9da2294e0',
         ]
         # setup/configure paths
         self.test_path = dirname(__file__)
@@ -114,40 +118,51 @@ class DataTestCase(unittest.TestCase):
         self.assertEqual(files, ['README', 'file1',], 
             'internal changeset context have been changed?')
 
-    def test_001_archive(self):
+    def archiver_tester(self, answers, id_):
+        """\
+        The core archive tester.
+        """
+
+        o = self.pmr2hgtest
+        r = TestRequest(rev=self.archive_revs[id_], request_subpath=('gz',))
+        a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
+        out = a.archive()
+        out.seek(0)
+        testtf = tarfile.open('test', 'r:gz', out)
+        names = [i.name for i in testtf.getmembers()]
+        for check in answers:
+            self.assert_(check in names, 
+                "'%s' not found in archive." % (check))
+            if answers[check] is not None:
+                self.assertEqual(testtf.extractfile(check).read(), 
+                    answers[check], 'extracted data not as expected.')
+        complete = answers.keys()
+        complete.sort()
+        names.sort()
+        self.assertEqual(names, complete, 'list of files incomplete')
+        # XXX can't test response headers because test response provides
+        # limited features
+
+    def test_100_archive(self):
         """\
         Standard archive test.
         """
 
-        o = self.pmr2hgtest
-        r = TestRequest(rev=self.archive_revs[0], request_subpath=('gz',))
-        a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
-        out = a.archive()
-        out.seek(0)
-        testtf = tarfile.open('test', 'r:gz', out)
-        names = [i.name for i in testtf.getmembers()]
-        names.sort()
-        answers = [
-            'pmr2hgtest-eb2615b6ebf9/.hg_archival.txt',
-            'pmr2hgtest-eb2615b6ebf9/README',
-            'pmr2hgtest-eb2615b6ebf9/file1',
-        ]
-        self.assertEqual(names, answers)
-        # XXX can't test response headers because test response provides
-        # limited features
+        answers = {
+            'pmr2hgtest-eb2615b6ebf9/.hg_archival.txt':
+                None,
+            'pmr2hgtest-eb2615b6ebf9/README':
+                'This is a simple test repository for PMR2.\n',
+            'pmr2hgtest-eb2615b6ebf9/file1':
+                'This is file1, initial commit.\n',
+        }
+        self.archiver_tester(answers, 0)
 
-    def test_002_archive(self):
+    def test_101_archive(self):
         """\
         Include import archive test.
         """
 
-        o = self.pmr2hgtest
-        r = TestRequest(rev=self.archive_revs[1], request_subpath=('gz',))
-        a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
-        out = a.archive()
-        out.seek(0)
-        testtf = tarfile.open('test', 'r:gz', out)
-        names = [i.name for i in testtf.getmembers()]
         answers = {
             'pmr2hgtest-c7888f70e7ee/.hg_archival.txt':
                 None,
@@ -163,13 +178,35 @@ class DataTestCase(unittest.TestCase):
                 None,
             'pmr2hgtest-c7888f70e7ee/ext/import1/README':
                 'this is import1\n',
-
         }
-        for check in answers:
-            self.assert_(check in names, 'subrepo missing?')
-            if answers[check] is not None:
-                self.assertEqual(testtf.extractfile(check).read(), 
-                    answers[check], 'extracted data not as expected.')
+        self.archiver_tester(answers, 1)
+
+    def test_102_archive(self):
+        """\
+        Include more import archive test and changes.
+        """
+
+        answers = {
+            'pmr2hgtest-d52a32a5fa62/.hg_archival.txt':
+                None,
+            'pmr2hgtest-d52a32a5fa62/.hgsub':
+                'ext/import1 = http://models.example.com/w/import1\n',
+            'pmr2hgtest-d52a32a5fa62/.hgsubstate':
+                '3952b4ff62a6062b830113430d300171ca402d8b ext/import1\n',
+            'pmr2hgtest-d52a32a5fa62/README':
+                'This is a simple test repository for PMR2.\n',
+            'pmr2hgtest-d52a32a5fa62/file1':
+                'This is file1.\nYes there are changes.\n',
+            'pmr2hgtest-d52a32a5fa62/file2':
+                'This is file2\n',
+            'pmr2hgtest-d52a32a5fa62/ext/import1/.hg_archival.txt':
+                None,
+            'pmr2hgtest-d52a32a5fa62/ext/import1/README':
+                'this is import1\n',
+            'pmr2hgtest-d52a32a5fa62/ext/import1/if1':
+                'if1\n',
+        }
+        self.archiver_tester(answers, 2)
 
 
 def test_suite():
