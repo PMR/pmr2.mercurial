@@ -34,8 +34,9 @@ class Folder(Location, Acquisition.Implicit):
         super(Folder, self).__init__(id_)
         self.d = {}
     def __of__(self, other):
-        other.__setitem__(self.__name__, self)
-        return super(Folder, self).__of__(other)
+        acquired = super(Folder, self).__of__(other)
+        other.__setitem__(self.__name__, acquired)
+        return acquired
     def __setitem__(self, key, value):
         self.d[key] = value
     def __getitem__(self, key):
@@ -208,6 +209,81 @@ class DataTestCase(unittest.TestCase):
         }
         self.archiver_tester(answers, 2)
 
+    def test_103_archive(self):
+        """\
+        main imports import2
+        """
+
+        answers = {
+            'pmr2hgtest-d2759ae2454c/.hg_archival.txt':
+                None,
+            'pmr2hgtest-d2759ae2454c/.hgsub':
+                'ext/import1 = http://models.example.com/w/import1\n'
+                'ext/import2 = http://models.example.com/w/import2\n',
+            'pmr2hgtest-d2759ae2454c/.hgsubstate':
+                '3952b4ff62a6062b830113430d300171ca402d8b ext/import1\n'
+                'a413e4d7eb3846209aa8df44addf625093aac231 ext/import2\n',
+            'pmr2hgtest-d2759ae2454c/README':
+                'This is a simple test repository for PMR2.\n',
+            'pmr2hgtest-d2759ae2454c/file1':
+                'This is file1.\n'
+                'Yes there are changes.\n',
+            'pmr2hgtest-d2759ae2454c/file2':
+                'This is file2\n',
+            'pmr2hgtest-d2759ae2454c/ext/import1/.hg_archival.txt':
+                None,
+            'pmr2hgtest-d2759ae2454c/ext/import1/README':
+                'this is import1\n',
+            'pmr2hgtest-d2759ae2454c/ext/import1/if1':
+                'if1\n',
+            'pmr2hgtest-d2759ae2454c/ext/import2/.hg_archival.txt':
+                None,
+            'pmr2hgtest-d2759ae2454c/ext/import2/README':
+                'this is import2\n',
+        }
+        self.archiver_tester(answers, 3)
+
+    def test_104_archive(self):
+        """\
+        Now import1 imports import2 also
+        """
+
+        answers = {
+            'pmr2hgtest-0ab9d678be93/.hg_archival.txt':
+                None,
+            'pmr2hgtest-0ab9d678be93/.hgsub':
+                'ext/import1 = http://models.example.com/w/import1\n'
+                'ext/import2 = http://models.example.com/w/import2\n',
+            'pmr2hgtest-0ab9d678be93/.hgsubstate':
+                '4df76eccfee8a0d27844b5c069bc399bb0e4e043 ext/import1\n'
+                'a413e4d7eb3846209aa8df44addf625093aac231 ext/import2\n',
+            'pmr2hgtest-0ab9d678be93/README':
+                'This is a simple test repository for PMR2.\n',
+            'pmr2hgtest-0ab9d678be93/file1':
+                'This is file1.\n'
+                'Yes there are changes.\n',
+            'pmr2hgtest-0ab9d678be93/file2':
+                'This is file2\n',
+            'pmr2hgtest-0ab9d678be93/ext/import1/.hg_archival.txt':
+                None,
+            'pmr2hgtest-0ab9d678be93/ext/import1/.hgsub':
+                'import2 = http://models.example.com/w/import2\n',
+            'pmr2hgtest-0ab9d678be93/ext/import1/.hgsubstate':
+                'a413e4d7eb3846209aa8df44addf625093aac231 import2\n',
+            'pmr2hgtest-0ab9d678be93/ext/import1/README':
+                'this is import1\n',
+            'pmr2hgtest-0ab9d678be93/ext/import1/if1':
+                'if1\n',
+            'pmr2hgtest-0ab9d678be93/ext/import1/import2/.hg_archival.txt':
+                None,
+            'pmr2hgtest-0ab9d678be93/ext/import1/import2/README':
+                'this is import2\n',
+            'pmr2hgtest-0ab9d678be93/ext/import2/.hg_archival.txt':
+                None,
+            'pmr2hgtest-0ab9d678be93/ext/import2/README':
+                'this is import2\n',
+        }
+        self.archiver_tester(answers, 4)
 
 def test_suite():
     from unittest import TestSuite, makeSuite
