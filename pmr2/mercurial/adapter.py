@@ -62,13 +62,10 @@ class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
         arch_version = filter(self.rev, 'short')
         return "%s-%s" % (reponame, arch_version)
 
-    def _archive(self, artype, name=None):
+    def _archive(self, artype, name):
         """\
         archive the repo.  based on webcommands.archive
         """
-
-        if name is None:
-            name = self._archive_name
 
         context = self.context
         rev = self.rev
@@ -78,69 +75,77 @@ class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
         utils.archive(self, dest, rev, artype, prefix=name)
         return dest
 
-    def archive(self, artype, name=None):
+    def archive(self, artype, name=None, subrepo=False):
         if name is None:
             name = self._archive_name
 
-        archives = []
-        # check for subrepos (substates)
-        substate = self.ctx.substate
-        if substate:
-            if not artype in ('tar', 'tgz'):
-                raise KeyError('%s not supported for subrepo', artype)
-
-            # generate archives of the stuff within.
-            for location, subrepo in substate.iteritems():
-                source, rev = subrepo
-                if dirname(source) == dirname(self.context.absolute_url()):
-                    # Current we only support workspaces linked within 
-                    # the same folder.  Later maybe we can fix this to 
-                    # support other workspaces elsewhere on the site.
-
-                    # we can attempt to resolve the workspace object.
-                    wid = basename(source)
-                    folder = aq_parent(self.context)
-                    o = folder[wid]
-
-                    swp = zope.component.queryMultiAdapter((o, rev,), 
-                        name="PMR2StorageFixedRevRequest")
-                    # XXX assuming unix
-                    subname = '%s/%s' % (name, location)
-                    archives.append(swp.archive('tar', subname))
-                else:
-                    # XXX we need to raise some sort of stink, maybe
-                    # deferr an exception till later.
-                    pass
-
-            # we are only taring this up, will compress later.
-            out = self._archive('tar', name)
-            out.seek(0)
-
-            tf = tarfile.open(name, 'a:', out)
-            # join subarchives together.
-            for a in archives:
-                a.seek(0)
-                tfa = tarfile.open('import', 'r', a)
-                for i in tfa.getmembers():
-                    tf.addfile(i, tfa.extractfile(i))
-                tfa.close()
-                a.close()
-            tf.close()
-            out.seek(0)
-
-            if artype == 'tgz':
-                # compress
-                result = StringIO()
-                gz = GzipFile(name, 'wb', fileobj=result)
-                gz.write(out.getvalue())
-                gz.close()
-                pass
-            else:
-                # XXX assuming standard tar
-                result = out
+        if subrepo and self.ctx.substate:
+            result = self._archive_subrepo(artype, name)
         else:
             # this is the core of what this method is supposed to do.
             result = self._archive(artype, name)
+
+        return result
+
+    def _archive_subrepo(self, artype, name):
+        """\
+        This archives the subrepos.
+        """
+
+        # check for subrepos (substates)
+        substate = self.ctx.substate
+        archives = []
+
+        if not artype in ('tar', 'tgz'):
+            raise KeyError('%s not supported for subrepo', artype)
+
+        # generate archives of the stuff within.
+        for location, subrepo in substate.iteritems():
+            source, rev = subrepo
+            if dirname(source) == dirname(self.context.absolute_url()):
+                # Current we only support workspaces linked within 
+                # the same folder.  Later maybe we can fix this to 
+                # support other workspaces elsewhere on the site.
+
+                # we can attempt to resolve the workspace object.
+                wid = basename(source)
+                folder = aq_parent(self.context)
+                o = folder[wid]
+
+                swp = zope.component.queryMultiAdapter((o, rev,), 
+                    name="PMR2StorageFixedRevRequest")
+                # XXX assuming unix
+                subname = '%s/%s' % (name, location)
+                archives.append(swp._archive_subrepo('tar', subname))
+            else:
+                # XXX we need to raise some sort of stink, maybe
+                # deferr an exception till later.
+                pass
+
+        # we are only taring this up, will compress later.
+        out = self._archive('tar', name)
+        out.seek(0)
+
+        tf = tarfile.open(name, 'a:', out)
+        # join subarchives together.
+        for a in archives:
+            a.seek(0)
+            tfa = tarfile.open('import', 'r', a)
+            for i in tfa.getmembers():
+                tf.addfile(i, tfa.extractfile(i))
+            tfa.close()
+            a.close()
+        tf.close()
+        out.seek(0)
+
+        # only support gzip for now, standard tar otherwise.
+        if artype == 'tgz':
+            result = StringIO()
+            gz = GzipFile(name, 'wb', fileobj=result)
+            gz.write(out.getvalue())
+            gz.close()
+        else:
+            result = out
 
         return result
 
@@ -227,7 +232,7 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
 
     # overriding archive, since type is specified in the request.
 
-    def archive(self):
+    def archive(self, subrepo=False):
         """\
         Extends upon the PMR2StorageAdapter class to be able to archive
         subrepos.
@@ -237,7 +242,8 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
         name = self._archive_name
         mimetype, artype, extension, encoding = self.archive_specs[type_]
         # this is the core of what this method is supposed to do.
-        result = PMR2StorageFixedRevAdapter.archive(self, artype, name)
+        result = PMR2StorageFixedRevAdapter.archive(
+            self, artype, name, subrepo)
 
         # XXX check for type_ in archive_specs
 

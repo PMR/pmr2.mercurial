@@ -119,7 +119,7 @@ class DataTestCase(unittest.TestCase):
         self.assertEqual(files, ['README', 'file1',], 
             'internal changeset context have been changed?')
 
-    def archiver_tester(self, answers, id_):
+    def archiver_tester(self, answers, id_, subrepo=True):
         """\
         The core archive tester.
         """
@@ -127,7 +127,7 @@ class DataTestCase(unittest.TestCase):
         o = self.pmr2hgtest
         r = TestRequest(rev=self.archive_revs[id_], request_subpath=('gz',))
         a = zope.component.queryMultiAdapter((o, r,), name="PMR2StorageRequest")
-        out = a.archive()
+        out = a.archive(subrepo=subrepo)
         out.seek(0)
         testtf = tarfile.open('test', 'r:gz', out)
         names = [i.name for i in testtf.getmembers()]
@@ -329,6 +329,31 @@ class DataTestCase(unittest.TestCase):
                 'New import2 feature\n',
         }
         self.archiver_tester(answers, 5)
+
+    def test_205_ignore_subrepo(self):
+        """\
+        Test for archive that ignores subrepo
+        """
+
+        answers = {
+            'pmr2hgtest-c9226c3a0855/.hg_archival.txt':
+                None,
+            'pmr2hgtest-c9226c3a0855/.hgsub':
+                'ext/import1 = http://models.example.com/w/import1\n'
+                'ext/import2 = http://models.example.com/w/import2\n',
+            'pmr2hgtest-c9226c3a0855/.hgsubstate':
+                '4df76eccfee8a0d27844b5c069bc399bb0e4e043 ext/import1\n'
+                '60baac932b072c20fc7004c158ad2b1f5c80de14 ext/import2\n',
+            'pmr2hgtest-c9226c3a0855/README':
+                'This is a simple test repository for PMR2.\n',
+            'pmr2hgtest-c9226c3a0855/file1':
+                'This is file1.\n'
+                'Yes there are changes.\n',
+            'pmr2hgtest-c9226c3a0855/file2':
+                'This is file2\n',
+        }
+        self.archiver_tester(answers, 5, False)
+
 
 def test_suite():
     from unittest import TestSuite, makeSuite
