@@ -135,6 +135,9 @@ class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
                 gz.write(out.getvalue())
                 gz.close()
                 pass
+            else:
+                # XXX assuming standard tar
+                result = out
         else:
             # this is the core of what this method is supposed to do.
             result = self._archive(artype, name)
