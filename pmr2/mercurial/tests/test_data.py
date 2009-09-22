@@ -285,6 +285,51 @@ class DataTestCase(unittest.TestCase):
         }
         self.archiver_tester(answers, 4)
 
+    def test_105_archive(self):
+        """\
+        Now this import of import2 is bumpped up a revision but import1 
+        remain the same
+        """
+
+        answers = {
+            'pmr2hgtest-c9226c3a0855/.hg_archival.txt':
+                None,
+            'pmr2hgtest-c9226c3a0855/.hgsub':
+                'ext/import1 = http://models.example.com/w/import1\n'
+                'ext/import2 = http://models.example.com/w/import2\n',
+            'pmr2hgtest-c9226c3a0855/.hgsubstate':
+                '4df76eccfee8a0d27844b5c069bc399bb0e4e043 ext/import1\n'
+                '60baac932b072c20fc7004c158ad2b1f5c80de14 ext/import2\n',
+            'pmr2hgtest-c9226c3a0855/README':
+                'This is a simple test repository for PMR2.\n',
+            'pmr2hgtest-c9226c3a0855/file1':
+                'This is file1.\n'
+                'Yes there are changes.\n',
+            'pmr2hgtest-c9226c3a0855/file2':
+                'This is file2\n',
+            'pmr2hgtest-c9226c3a0855/ext/import1/.hg_archival.txt':
+                None,
+            'pmr2hgtest-c9226c3a0855/ext/import1/.hgsub':
+                'import2 = http://models.example.com/w/import2\n',
+            'pmr2hgtest-c9226c3a0855/ext/import1/.hgsubstate':
+                'a413e4d7eb3846209aa8df44addf625093aac231 import2\n',
+            'pmr2hgtest-c9226c3a0855/ext/import1/README':
+                'this is import1\n',
+            'pmr2hgtest-c9226c3a0855/ext/import1/if1':
+                'if1\n',
+            'pmr2hgtest-c9226c3a0855/ext/import1/import2/.hg_archival.txt':
+                None,
+            'pmr2hgtest-c9226c3a0855/ext/import1/import2/README':
+                'this is import2\n',
+            'pmr2hgtest-c9226c3a0855/ext/import2/.hg_archival.txt':
+                None,
+            'pmr2hgtest-c9226c3a0855/ext/import2/README':
+                'this is import2\n',
+            'pmr2hgtest-c9226c3a0855/ext/import2/test':
+                'New import2 feature\n',
+        }
+        self.archiver_tester(answers, 5)
+
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()
