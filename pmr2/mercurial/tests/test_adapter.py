@@ -85,16 +85,6 @@ class AdapterTestCase(unittest.TestCase):
         self.assertNotEqual(a, None, 'adapter not registered')
         self.assertEqual(a._changectx(), self.repo._changectx())
 
-        # get second id
-        r = self.revs[1]
-        a = zope.component.queryMultiAdapter((o, r,), 
-                                             name="PMR2StorageFixedRev")
-        self.assertNotEqual(a, None, 'adapter not registered')
-        rev2 = a.rev
-        self.assertEqual(rev2, r, 'hgweb revision and default not the same?')
-        # can no longer read another context
-        self.assertRaises(TypeError, a, '_filectx', r, 'file1')
-
         # get latest id.
         a._changectx()
         rev = a.rev
@@ -144,6 +134,25 @@ class AdapterTestCase(unittest.TestCase):
         result = struct['dentries']().next()
         self.assertEqual(result['basename'], entry)
         self.assertRaises(StopIteration, struct['fentries']().next)
+
+    def test_adapter_fixedrev(self):
+        o = PMR2Storage(self.repodir)
+        r = self.revs[1]
+        a = zope.component.queryMultiAdapter((o, r,), 
+                                             name="PMR2StorageFixedRev")
+        self.assertNotEqual(a, None, 'adapter not registered')
+        rev2 = a.rev
+        self.assertEqual(rev2, r, 'hgweb revision and default not the same?')
+
+        manifest = a.raw_manifest().keys()
+        manifest.sort()
+        self.assertEqual(['file1', 'file2'], manifest,
+            'manifest not locked at specified version')
+        # can no longer read another context
+        self.assertRaises(TypeError, a, '_filectx', r, 'file1', 
+            'revision can no longer be specified.')
+        f1 = a.file('file2')
+        self.assertEqual(f1, self.files[0], 'local revision file not matched')
 
 
 def test_suite():
