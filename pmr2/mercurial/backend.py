@@ -290,9 +290,9 @@ class Storage(object):
         """\
         Returns contents of file.
         """
-        # XXX wrong exception type?
+        
         if not path:
-            raise PathNotFoundError('path not found')
+            raise PathInvalidError('path unspecified')
 
         ctx = self._changectx(rev)
         try:
