@@ -24,6 +24,8 @@ demandimport.disable()
 
 __all__ = [
     'Storage',
+    'WebStorage',
+    'FixedRevWebStorage',
     'Sandbox',
 ]
 
@@ -349,37 +351,6 @@ class WebStorage(hgweb, Storage):
         if self._path:
             request.form['file'] = [self._path]
 
-    @property
-    def ctx(self):
-        return self._ctx
-
-    @property
-    def path(self):
-        return self._path
-
-    def raw_manifest(self):
-        """\
-        Returns raw manifest within the current context
-        """
-
-        return self.ctx.manifest()
-
-    def _filectx(self, path=None):
-        """\
-        Returns contents of file within the current context.
-        """
-
-        if not path:
-            if not hasattr(self, '_path'):
-                # could use a better exception type/message.
-                raise AttributeError('path is unknown')
-            path = self._path
-
-        try:
-            return self.ctx.filectx(path)
-        except revlog.LookupError:
-            raise PathNotFoundError("path '%s' not found" % path)
-
     def structure(self, request, datefmt='isodate'):
         """\
         This method is implemented as a wrapper around webcommands.file
@@ -500,6 +471,46 @@ class WebStorage(hgweb, Storage):
         for chunk in content:
             write(chunk)
         return out.getvalue()
+
+
+class FixedRevWebStorage(WebStorage):
+    """\
+    WebStorage subclass that fixes revision.
+    """
+
+    def __init__(self, rpath, ctx):
+        WebStorage.__init__(self, rpath, ctx)
+
+    @property
+    def ctx(self):
+        return self._ctx
+
+    @property
+    def path(self):
+        return self._path
+
+    def raw_manifest(self):
+        """\
+        Returns raw manifest within the current context
+        """
+
+        return self.ctx.manifest()
+
+    def _filectx(self, path=None):
+        """\
+        Returns contents of file within the current context.
+        """
+
+        if not path:
+            if not hasattr(self, '_path'):
+                # could use a better exception type/message.
+                raise AttributeError('path is unknown')
+            path = self._path
+
+        try:
+            return self.ctx.filectx(path)
+        except revlog.LookupError:
+            raise PathNotFoundError("path '%s' not found" % path)
 
 
 class Sandbox(Storage):

@@ -11,17 +11,15 @@ from mercurial.hgweb import webcommands, webutil
 from mercurial.hgweb.common import ErrorResponse
 from mercurial import error
 
-from pmr2.mercurial import WebStorage, Storage, Sandbox, utils
+from pmr2.mercurial import FixedRevWebStorage, WebStorage, Storage, Sandbox
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.exceptions import *
-from pmr2.mercurial.utils import tmpl, filter
+from pmr2.mercurial.utils import archive, tmpl, filter
 
 
-class PMR2StorageAdapter(Storage):
+class PMR2StorageAdapter(WebStorage):
     """\
-    To adapt a PMR2 content object to a standard Storage object.
-
-    This results in a raw Storage object, use with care.
+    To adapt a PMR2 content object to a WebStorage object.
     """
 
     zope.interface.implements(IPMR2HgWorkspaceAdapter)
@@ -34,13 +32,15 @@ class PMR2StorageAdapter(Storage):
 
         self.context = context
         root = context.get_path()
-        Storage.__init__(self, root)
+        WebStorage.__init__(self, root)
 
 
-class PMR2StorageFixedRevAdapter(WebStorage):
+class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
     """\
     This adapter requires a fixed revision.
     """
+
+    zope.interface.implements(IPMR2HgWorkspaceAdapter)
 
     def __init__(self, context, rev):
         self.context = context
@@ -64,7 +64,7 @@ class PMR2StorageFixedRevAdapter(WebStorage):
         changectx = self.ctx
 
         dest = StringIO()
-        utils.archive(self, dest, rev, artype, prefix=name)
+        archive(self, dest, rev, artype, prefix=name)
         return dest
 
     def archive(self, artype, name=None, subrepo=False):
@@ -166,7 +166,7 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
 
     @property
     def short_rev(self):
-        return utils.filter(self.rev, 'short')
+        return filter(self.rev, 'short')
 
     # overriding structure,, since request is already provided.
     _structure = WebStorage.structure
@@ -208,7 +208,7 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
         """
 
         result = WebStorage.fileinfo(self, self.rev, path).next()
-        result['date'] = utils.filter(result['date'], 'isodate')
+        result['date'] = filter(result['date'], 'isodate')
         return result
 
     def get_log(self, rev=None, branch=None, shortlog=False, datefmt=None, 
