@@ -17,43 +17,35 @@ from pmr2.mercurial.exceptions import *
 from pmr2.mercurial.utils import tmpl, filter
 
 
-class PMR2StorageAdapter(WebStorage):
+class PMR2StorageAdapter(Storage):
     """\
     To adapt a PMR2 content object to a standard Storage object.
 
-    It's up to subclasses of this class to register themselves as 
-    adapters.
+    This results in a raw Storage object, use with care.
     """
-
-    # XXX is it correct to imply that the revision cannot be respecified 
-    # once this is instantiated?  Some method overrides below makes this
-    # assumption, not all are.  This needs to be clarified.
-
-    # Perhaps implement a raw storage class where free for all access is
-    # enabled, with a locked down storage class that removes that access
-    # be implemented?
 
     zope.interface.implements(IPMR2HgWorkspaceAdapter)
 
-    def __init__(self, context, rev=None):
+    def __init__(self, context):
         """
         context -
             The object to turn into a workspace
-        rev -
-            The revision (optional)
         """
 
         self.context = context
         root = context.get_path()
-        WebStorage.__init__(self, root, rev)
+        Storage.__init__(self, root)
 
-class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
+
+class PMR2StorageFixedRevAdapter(WebStorage):
     """\
     This adapter requires a fixed revision.
     """
 
     def __init__(self, context, rev):
-        PMR2StorageAdapter.__init__(self, context, rev)
+        self.context = context
+        root = context.get_path()
+        WebStorage.__init__(self, root, rev)
 
     @property
     def _archive_name(self):
@@ -113,7 +105,7 @@ class PMR2StorageFixedRevAdapter(PMR2StorageAdapter):
                 o = folder[wid]
 
                 swp = zope.component.queryMultiAdapter((o, rev,), 
-                    name="PMR2StorageFixedRevRequest")
+                    name="PMR2StorageFixedRev")
                 # XXX assuming unix
                 subname = '%s/%s' % (name, location)
                 archives.append(swp._archive_subrepo('tar', subname))
@@ -170,7 +162,7 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
 
         self.request = request
         self.parse_request()
-        PMR2StorageAdapter.__init__(self, context, self._rev)
+        PMR2StorageFixedRevAdapter.__init__(self, context, self._rev)
 
     @property
     def short_rev(self):

@@ -14,7 +14,7 @@
            *"
       factory="pmr2.mercurial.adapter.PMR2StorageFixedRevAdapter"
       provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
-      name="PMR2StorageFixedRevRequest"
+      name="PMR2StorageFixedRev"
       />
 
   <adapter

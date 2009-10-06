@@ -37,6 +37,8 @@ class AdapterTestCase(unittest.TestCase):
         self.repodir = join(self.testdir, 'repodir')
         Sandbox.create(self.repodir, True)
 
+        self.revs = []
+
         sandbox = Sandbox(self.repodir, ctx='tip')
         self.path = dirname(__file__)
         self.filelist = ['file1', 'file2', 'file3',]
@@ -45,16 +47,25 @@ class AdapterTestCase(unittest.TestCase):
         self.files = [open(join(self.path, i)).read() for i in self.filelist]
         self.msg = 'added some files'
         self.user = 'Tester <test@example.com>'
+
         sandbox.add_file_content('file1', self.files[0])
         sandbox.add_file_content('file2', self.files[0])
         sandbox.commit('added1', 'user1 <1@example.com>')
+        self.revs.append(Storage(self.repodir, ctx='tip').rev)
+
         sandbox.add_file_content('file1', self.files[1])
         sandbox.commit('added2', 'user2 <2@example.com>')
+        self.revs.append(Storage(self.repodir, ctx='tip').rev)
+
         sandbox.add_file_content('file2', self.files[1])
         sandbox.add_file_content('file3', self.files[0])
         sandbox.commit('added3', 'user3 <3@example.com>')
+        self.revs.append(Storage(self.repodir, ctx='tip').rev)
+
         sandbox.add_file_content(self.nested_name, self.nested_file)
         sandbox.commit('added4', 'user3 <3@example.com>')
+        self.revs.append(Storage(self.repodir, ctx='tip').rev)
+
         self.repo = Storage(self.repodir, ctx='tip')
         self.rev = self.repo.rev
 
@@ -73,6 +84,16 @@ class AdapterTestCase(unittest.TestCase):
         a = zope.component.queryMultiAdapter((o,), name="PMR2Storage")
         self.assertNotEqual(a, None, 'adapter not registered')
         self.assertEqual(a._changectx(), self.repo._changectx())
+
+        # get second id
+        r = self.revs[1]
+        a = zope.component.queryMultiAdapter((o, r,), 
+                                             name="PMR2StorageFixedRev")
+        self.assertNotEqual(a, None, 'adapter not registered')
+        rev2 = a.rev
+        self.assertEqual(rev2, r, 'hgweb revision and default not the same?')
+        # can no longer read another context
+        self.assertRaises(TypeError, a, '_filectx', r, 'file1')
 
         # get latest id.
         a._changectx()
