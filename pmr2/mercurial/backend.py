@@ -240,6 +240,8 @@ class Storage(object):
         so the value return is actually an iterator, and the structure
         will likely change when this class is migrated to a common
         interface.
+
+        This method will not cause the internal context to change.
         """
 
         # XXX maybe move this into the hgweb_ext
@@ -511,6 +513,14 @@ class FixedRevWebStorage(WebStorage):
             return self.ctx.filectx(path)
         except revlog.LookupError:
             raise PathNotFoundError("path '%s' not found" % path)
+
+    def file(self, path=None):
+        fctx = self._filectx(path)
+        return fctx.data()
+
+    def fileinfo(self, path=None):
+        fctx = self._filectx(path)
+        return webcommands._filerevision(self, _t, fctx)
 
 
 class Sandbox(Storage):
