@@ -3,7 +3,7 @@ import unittest
 import tempfile
 import shutil
 import os
-from os.path import basename, dirname, join, splitext
+from os.path import basename, join, splitext
 
 # XXX these can fail because this module can run without depending on
 # these.
@@ -22,6 +22,8 @@ from zope.configuration.xmlconfig import xmlconfig
 from zope.component.tests import clearZCML
 
 import Acquisition
+
+from pmr2.mercurial.tests import util
 
 # Lightweight helper objects
 
@@ -57,18 +59,10 @@ class PMR2Storage(Folder):
 class DataTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.archive_revs = [
-            'eb2615b6ebf9a44226bba22c766bc7858e370ed9',
-            'c7888f70e7ee440a561283bb7a27cc5ba9888a58',
-            'd52a32a5fa62a357ed77314888b939f0fc7c9c9b',
-            'd2759ae2454c4e0946f4d8feee60864590b2ddb0',
-            '0ab9d678be937c20c3ba4953ba49515fdad396e7',
-            'c9226c3a085546313d61413adb95d3a9da2294e0',
-        ]
+
         # setup/configure paths
-        self.test_path = dirname(__file__)
-        self.archive_name = 'pmr2hgtest.tgz'
-        self.archive_path = join(self.test_path, self.archive_name)
+        self.archive_revs = util.ARCHIVE_REVS
+        self.archive_name = util.ARCHIVE_NAME
         self.root_name = splitext(self.archive_name)[0]
         self.tempdir = tempfile.mkdtemp()
 
@@ -87,12 +81,7 @@ class DataTestCase(unittest.TestCase):
         # import1 first rev imports nthing
         # - rev2 it imports 2
 
-        # extraction 
-        tf = tarfile.open(self.archive_path, 'r:gz')
-        mem = tf.getmembers()
-        for m in mem:
-            tf.extract(m, self.tempdir)
-        tf.close()
+        util.extract_archive(self.tempdir)
 
         # build test environ.
         self.repodir = join(self.tempdir, self.root_name)
