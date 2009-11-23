@@ -265,10 +265,7 @@ class Storage(object):
         elif datefmt is None:
             datefmt = 'isodate'
 
-        if datefmt == 'age':
-            getdate = lambda i: utils.filter(i, datefmt) + ' ago'
-        else:
-            getdate = lambda i: utils.filter(i, datefmt)
+        getdate = lambda i: utils.filter(i, datefmt)
 
         # only looking, not changing.
         ctx = self._getctx(rev)
