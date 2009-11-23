@@ -24,5 +24,7 @@ pmr2/mercurial/tests/file1
 pmr2/mercurial/tests/file2
 pmr2/mercurial/tests/file3
 pmr2/mercurial/tests/test_adapter.py
+pmr2/mercurial/tests/test_data.py
 pmr2/mercurial/tests/test_repository.py
 pmr2/mercurial/tests/test_utils.py
+pmr2/mercurial/tests/util.py

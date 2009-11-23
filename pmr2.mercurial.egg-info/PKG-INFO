@@ -20,6 +20,20 @@ Description: Introduction
         be supported by providing a common interface, which will be called
         pmr2.backend.interface.
         
+        
+        Correct implementation and usage of Zope, WSGI, Repoze
+        ------------------------------------------------------
+        
+        While the original mercurial web implementation follows the wsgi
+        standards, Zope/Plone didn't until I learned about repoze (refactored
+        Zope server stack to follow wsgi).  This is why instead I extend hgweb
+        to be part of the wsgi stack, I reuse/reimplemented a number of methods
+        to be "compatible" with original zope.  However, now that I moved to
+        using repoze some of these really should be rewritten to be compatible
+        with that new stack.  Then again, this is working out well enough for
+        now, so I am deferring the implementation of the "correct" approach
+        until I have more time for it.
+        
         Changelog
         =========
         
