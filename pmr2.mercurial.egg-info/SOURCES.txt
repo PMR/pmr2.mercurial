@@ -23,6 +23,7 @@ pmr2/mercurial/tests/__init__.py
 pmr2/mercurial/tests/file1
 pmr2/mercurial/tests/file2
 pmr2/mercurial/tests/file3
+pmr2/mercurial/tests/pmr2hgtest.tgz
 pmr2/mercurial/tests/test_adapter.py
 pmr2/mercurial/tests/test_data.py
 pmr2/mercurial/tests/test_repository.py
