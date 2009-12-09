@@ -71,7 +71,7 @@ class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
         if name is None:
             name = self._archive_name
 
-        if subrepo and self.ctx.substate:
+        if (subrepo and self.ctx.substate) or (artype in ('tar', 'tgz')):
             result = self._archive_subrepo(artype, name)
         else:
             # this is the core of what this method is supposed to do.
@@ -133,7 +133,9 @@ class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
         # only support gzip for now, standard tar otherwise.
         if artype == 'tgz':
             result = StringIO()
-            gz = GzipFile(name, 'wb', fileobj=result)
+            # XXX hint for Fail^WWinzip because it does not speak 
+            # mimetype and needs filename ext as hints to what to do.
+            gz = GzipFile(name + '.tar', 'wb', fileobj=result)
             gz.write(out.getvalue())
             gz.close()
         else:
