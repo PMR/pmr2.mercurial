@@ -72,20 +72,22 @@ class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
             name = self._archive_name
 
         if (subrepo and self.ctx.substate) or (artype in ('tar', 'tgz')):
-            result = self._archive_subrepo(artype, name)
+            result = self._archive_tar(name, subrepo, artype)
         else:
             # this is the core of what this method is supposed to do.
             result = self._archive(artype, name)
 
         return result
 
-    def _archive_subrepo(self, artype, name):
+    def _archive_tar(self, name, subrepo=True, artype='tar'):
         """\
         This archives the subrepos.
         """
 
-        # check for subrepos (substates)
-        substate = self.ctx.substate
+        substate = {}
+        if subrepo:
+            # check for subrepos (substates)
+            substate = self.ctx.substate
         archives = []
 
         if not artype in ('tar', 'tgz'):
@@ -108,7 +110,7 @@ class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
                     name="PMR2StorageFixedRev")
                 # XXX assuming unix
                 subname = '%s/%s' % (name, location)
-                archives.append(swp._archive_subrepo('tar', subname))
+                archives.append(swp._archive_tar(subname))
             else:
                 # XXX we need to raise some sort of stink, maybe
                 # deferr an exception till later.
