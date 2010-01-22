@@ -17,8 +17,3 @@ class IPMR2StorageBase(zope.interface.Interface):
     An class that implements this interface provides methods to make
     adaptation into the above interface possible.
     """
-
-    def get_path():
-        """\
-        Returns path of this object.
-        """

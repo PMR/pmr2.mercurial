@@ -10,6 +10,7 @@ from os.path import basename, join, splitext
 
 import zope.component
 import zope.interface
+from zope.app.component.hooks import getSiteManager
 from zope.publisher.browser import TestRequest
 
 import pmr2.mercurial
@@ -52,8 +53,11 @@ class PMR2Storage(Folder):
     def absolute_url(self):
         baseuri = 'http://models.example.com/w/'
         return baseuri + basename(self.path)
-    def get_path(self):
-        return self.path
+
+class Settings(object):
+    zope.interface.implements(IPMR2GlobalSettings)
+    def dirCreatedFor(self, obj):
+        return obj.path
 
 
 class DataTestCase(unittest.TestCase):
@@ -87,6 +91,11 @@ class DataTestCase(unittest.TestCase):
         self.repodir = join(self.tempdir, self.root_name)
         clearZCML()
         xmlconfig(open(join(pmr2.mercurial.__path__[0], 'configure.zcml')))
+
+        # register custom utility that would have normally been done.
+        sm = getSiteManager()
+        sm.registerUtility(Settings(), IPMR2GlobalSettings)
+        self.settings = getUtility(IPMR2GlobalSettings)
 
         # create some sort of common container
         self.w = Folder('w')

@@ -5,6 +5,7 @@ from os.path import basename, dirname
 from cStringIO import StringIO
 
 import zope.interface
+from zope.component import getUtility
 from Acquisition import aq_parent, aq_inner
 
 from mercurial.hgweb import webcommands, webutil
@@ -15,6 +16,8 @@ from pmr2.mercurial import FixedRevWebStorage, WebStorage, Storage, Sandbox
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.exceptions import *
 from pmr2.mercurial.utils import archive, tmpl, filter
+
+from pmr2.app.settings import IPMR2GlobalSettings
 
 
 class PMR2StorageAdapter(WebStorage):
@@ -31,7 +34,8 @@ class PMR2StorageAdapter(WebStorage):
         """
 
         self.context = context
-        root = context.get_path()
+        self.settings = getUtility(IPMR2GlobalSettings)
+        root = self.settings.dirCreatedFor(self.context)
         WebStorage.__init__(self, root)
 
 
@@ -44,7 +48,8 @@ class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
 
     def __init__(self, context, rev):
         self.context = context
-        root = context.get_path()
+        self.settings = getUtility(IPMR2GlobalSettings)
+        root = self.settings.dirCreatedFor(self.context)
         WebStorage.__init__(self, root, rev)
 
     @property

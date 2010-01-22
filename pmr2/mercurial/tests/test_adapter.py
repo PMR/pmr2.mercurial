@@ -9,6 +9,7 @@ from os.path import dirname, join
 
 import zope.component
 import zope.interface
+from zope.app.component.hooks import getSiteManager
 from zope.publisher.browser import TestRequest
 
 import pmr2.mercurial
@@ -16,6 +17,8 @@ from pmr2.mercurial import *
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.adapter import *
 from pmr2.mercurial.exceptions import *
+
+from pmr2.app.settings import IPMR2GlobalSettings
 
 from zope.configuration.xmlconfig import xmlconfig
 from zope.component.tests import clearZCML
@@ -27,8 +30,11 @@ class PMR2Storage(object):
     zope.interface.implements(IPMR2StorageBase)
     def __init__(self, path):
         self.path = path
-    def get_path(self):
-        return self.path
+
+class Settings(object):
+    zope.interface.implements(IPMR2GlobalSettings)
+    def dirCreatedFor(self, obj):
+        return obj.path
 
 class AdapterTestCase(unittest.TestCase):
 
@@ -72,12 +78,16 @@ class AdapterTestCase(unittest.TestCase):
         clearZCML()
         xmlconfig(open(join(pmr2.mercurial.__path__[0], 'configure.zcml')))
 
+        # register custom utility that would have normally been done.
+        sm = getSiteManager()
+        sm.registerUtility(Settings(), IPMR2GlobalSettings)
+        self.settings = getUtility(IPMR2GlobalSettings)
+
     def tearDown(self):
         shutil.rmtree(self.testdir)
 
     def test_adapter_base(self):
         o = PMR2Storage(self.repodir)
-        self.assertEqual(o.get_path(), self.repodir)
         a = PMR2StorageAdapter(o)
         self.assertEqual(a._changectx(), self.repo._changectx())
 
