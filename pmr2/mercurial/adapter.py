@@ -17,7 +17,7 @@ from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.exceptions import *
 from pmr2.mercurial.utils import archive, tmpl, filter
 
-from pmr2.app.settings import IPMR2GlobalSettings
+from pmr2.app.interfaces import IPMR2GlobalSettings
 
 
 class PMR2StorageAdapter(WebStorage):

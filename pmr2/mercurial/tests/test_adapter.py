@@ -18,7 +18,7 @@ from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.adapter import *
 from pmr2.mercurial.exceptions import *
 
-from pmr2.app.settings import IPMR2GlobalSettings
+from pmr2.app.interfaces import IPMR2GlobalSettings
 
 from zope.configuration.xmlconfig import xmlconfig
 from zope.component.tests import clearZCML
