@@ -103,6 +103,9 @@ class Storage(object):
             # XXX should include original traceback
             raise PathInvalidError('repository does not exist at path')
 
+        if isinstance(ctx, unicode):
+            ctx = ctx.encode('utf8')
+
         self._changectx(ctx)
 
     @staticmethod
