@@ -1,5 +1,9 @@
-from mercurial import demandimport
-demandimport.disable()
+try:
+    from mercurial import demandimport
+    demandimport.disable()
+except ImportError:
+    # we can't do anything.
+    pass
 # See http://peak.telecommunity.com/DevCenter/setuptools#namespace-packages
 try:
     __import__('pkg_resources').declare_namespace(__name__)
