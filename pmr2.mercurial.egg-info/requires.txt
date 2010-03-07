@@ -1,2 +1,2 @@
 setuptools
-mercurial==1.4
+mercurial==1.5
