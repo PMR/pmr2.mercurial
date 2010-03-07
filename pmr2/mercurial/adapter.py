@@ -100,7 +100,8 @@ class PMR2StorageFixedRevAdapter(FixedRevWebStorage):
 
         # generate archives of the stuff within.
         for location, subrepo in substate.iteritems():
-            source, rev = subrepo
+            # we don't have explicit support for non Hg subrepo kind.
+            source, rev, kind = subrepo
             if dirname(source) == dirname(self.context.absolute_url()):
                 # Current we only support workspaces linked within 
                 # the same folder.  Later maybe we can fix this to 

@@ -704,7 +704,9 @@ class Sandbox(Storage):
             raise TypeError('source must be a string')
             # pull from main repo only.
         # XXX could implement pull up to specific revs
-        source, revs, checkout = hg.parseurl(source, [])
+        repo = self._repo
+        dest, branches = hg.parseurl(source)
+        revs, checkout = hg.addbranchrevs(repo, repo, branches, [])
         if source == 'default':
             raise RepoNotFoundError('no suitable repository found')
 
@@ -745,9 +747,11 @@ class Sandbox(Storage):
         if rev is None:
             rev = [self._repo.lookup('.')]
 
-        dest, revs, checkout = hg.parseurl(
-            self._ui.expandpath(dest or 'default-push', 
-                                dest or 'default'), rev)
+        dest = self._ui.expandpath(dest or 'default-push', 
+                                   dest or 'default')
+        repo = self._repo
+        dest, branches = hg.parseurl(dest)
+        revs, checkout = hg.addbranchrevs(repo, repo, branches, rev)
 
         if dest in ('default', 'default-push',):
             raise RepoNotFoundError('no suitable target found')
