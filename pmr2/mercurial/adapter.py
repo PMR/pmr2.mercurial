@@ -204,7 +204,7 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
         try:
             fctx = webutil.filectx(self.repo, req)
         except error.LookupError, inst:
-            raise
+            raise PathNotFoundError("path '%s' not found" % path)
         path = fctx.path()
         text = fctx.data()
         #mt = mimetypes.guess_type(path)[0]
