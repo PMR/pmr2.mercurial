@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: pmr2.mercurial
-Version: 0.3rc1
+Version: 0.3
 Summary: Mercurial Wrapper for PMR2.
 Home-page: UNKNOWN
 Author: Tommy Yu
@@ -37,10 +37,10 @@ Description: Introduction
         Changelog
         =========
         
-        0.1 - Unreleased
-        ----------------
+        0.3 - Released (2010-06-21)
+        ---------------------------
         
-        * Initial release
+        * Updated to support/use Mercurial 1.5
         
         
 Platform: UNKNOWN
