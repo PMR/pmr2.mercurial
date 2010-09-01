@@ -10,6 +10,8 @@ ARCHIVE_REVS = [
     'd2759ae2454c4e0946f4d8feee60864590b2ddb0',
     '0ab9d678be937c20c3ba4953ba49515fdad396e7',
     'c9226c3a085546313d61413adb95d3a9da2294e0',
+    'f3464eef175a56df0cd462dc6799653bb0f760be',
+    '98a09b3682f1ba24bc9e873fea335cbe6e10e66e',
 ]
 
 def extract_archive(path, archive_path=ARCHIVE_PATH):
