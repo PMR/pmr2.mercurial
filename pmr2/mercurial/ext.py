@@ -140,12 +140,12 @@ def hg_copy(ui, repo, pats, opts, rename=False):
                               "data will be stored for %s.\n")
                             % (repo.pathto(origsrc, cwd), reltarget))
                 if repo.dirstate[abstarget] in '?r' and not dryrun:
-                    repo.add([abstarget])
+                    repo[None].add([abstarget])
             elif not dryrun:
-                repo.copy(origsrc, abstarget)
+                repo[None].copy(origsrc, abstarget)
 
         if rename and not dryrun:
-            repo.remove([abssrc], not after)
+            repo[None].remove([abssrc], not after)
 
     # pat: ossep
     # dest ossep

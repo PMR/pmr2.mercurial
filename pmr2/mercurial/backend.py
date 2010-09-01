@@ -43,11 +43,11 @@ class pmr2ui(ui.ui):
             self._buffers = src._buffers
             self._errors = src._errors
 
-    def write_err(self, *args):
+    def write_err(self, *args, **kw):
         if self._errors:
             self._errors[-1].extend([str(a) for a in args])
         else:
-            self.write(*args)
+            self.write(*args, **kw)
 
     def push_errors(self):
         self._errors.append([])
@@ -599,7 +599,7 @@ class Sandbox(Storage):
         fn = names
         if not isinstance(names, list):
             fn = [names]
-        self._repo.add(fn)
+        self._repo[None].add(fn)
 
     def add_file_content(self, name, content):
         """\
@@ -614,7 +614,7 @@ class Sandbox(Storage):
         fp.write(content)
         fp.close()
         if not name in self._repo.dirstate:
-            self._repo.add([name])
+            self._repo[None].add([name])
 
     def commit(self, message, user):
         """\
@@ -784,8 +784,8 @@ class Sandbox(Storage):
         modified, added, deleted, clean = s[0], s[1], s[3], s[6]
         # assume forced, and purge
         remove, forget = modified + deleted + clean + added, added
-        self._repo.forget(forget)
-        self._repo.remove(remove, unlink=True)
+        self._repo[None].forget(forget)
+        self._repo[None].remove(remove, unlink=True)
 
     def rename(self, source, dest, force=False):
         """\
