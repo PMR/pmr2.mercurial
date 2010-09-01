@@ -20,6 +20,10 @@ from pmr2.mercurial.exceptions import *
 
 from pmr2.app.interfaces import IPMR2GlobalSettings
 
+from pmr2.app.workspace.interfaces import IWorkspace
+from pmr2.app.workspace.interfaces import IWorkspaceContainer
+from pmr2.app.workspace.content import Workspace
+
 from zope.configuration.xmlconfig import xmlconfig
 from zope.component.tests import clearZCML
 
@@ -27,7 +31,7 @@ from zope.component.tests import clearZCML
 
 
 class PMR2Storage(object):
-    zope.interface.implements(IPMR2StorageBase)
+    zope.interface.implements(IWorkspace)
     def __init__(self, path):
         self.path = path
 

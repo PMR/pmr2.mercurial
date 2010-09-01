@@ -10,10 +10,3 @@ class IPMR2HgWorkspaceAdapter(zope.interface.Interface):
 
     # XXX missing fields (such as rev)
     # XXX missing methods
-
-
-class IPMR2StorageBase(zope.interface.Interface):
-    """\
-    An class that implements this interface provides methods to make
-    adaptation into the above interface possible.
-    """

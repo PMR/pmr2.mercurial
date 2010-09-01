@@ -341,18 +341,6 @@ class WebStorage(hgweb, Storage):
         Storage.__init__(self, rpath, ctx)
         hgweb.__init__(self, self._repo)
 
-    def parse_request(self):
-        # XXX give justification why this method belongs in this class.
-        request = self.request
-        self._rev = request.get('rev', None)
-        self._path = '/'.join(request.get('request_subpath', ()))
-        # build hgweb internal structures from the values we already
-        # processed.
-        if self._rev:
-            request.form['node'] = [request.get('rev')]
-        if self._path:
-            request.form['file'] = [self._path]
-
     def structure(self, request, datefmt='isodate'):
         """\
         This method is implemented as a wrapper around webcommands.file

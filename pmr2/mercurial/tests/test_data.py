@@ -19,6 +19,8 @@ from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.adapter import *
 from pmr2.mercurial.exceptions import *
 
+from pmr2.app.workspace.interfaces import IWorkspace
+
 from zope.configuration.xmlconfig import xmlconfig
 from zope.component.tests import clearZCML
 
@@ -46,7 +48,7 @@ class Folder(Location, Acquisition.Implicit):
         return self.d[key]
 
 class PMR2Storage(Folder):
-    zope.interface.implements(IPMR2StorageBase)
+    zope.interface.implements(IWorkspace)
     def __init__(self, path):
         Folder.__init__(self, basename(path))
         self.path = path

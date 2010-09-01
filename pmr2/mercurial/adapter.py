@@ -174,6 +174,17 @@ class PMR2StorageRequestAdapter(PMR2StorageFixedRevAdapter):
         self.parse_request()
         PMR2StorageFixedRevAdapter.__init__(self, context, self._rev)
 
+    def parse_request(self):
+        request = self.request
+        self._rev = request.get('rev', None)
+        self._path = '/'.join(request.get('request_subpath', ()))
+        # build hgweb internal structures from the values we already
+        # processed.
+        if self._rev:
+            request.form['node'] = [request.get('rev')]
+        if self._path:
+            request.form['file'] = [self._path]
+
     @property
     def short_rev(self):
         return filter(self.rev, 'short')
