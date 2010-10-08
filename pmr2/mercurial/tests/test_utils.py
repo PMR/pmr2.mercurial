@@ -3,7 +3,10 @@ import tempfile
 import shutil
 import os
 from os.path import dirname, join
-from pmr2.mercurial import utils, exceptions
+
+from pmr2.app.workspace import exceptions
+
+from pmr2.mercurial import utils
 
 
 class WebdirTestCase(unittest.TestCase):

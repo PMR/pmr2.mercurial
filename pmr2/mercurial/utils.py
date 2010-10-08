@@ -2,7 +2,7 @@ import os
 import os.path
 
 from mercurial import archival, templatefilters
-from pmr2.mercurial.exceptions import SubrepoPathUnsupportedError
+from pmr2.app.workspace.exceptions import SubrepoPathUnsupportedError
 
 _rstub = '.hg'
 

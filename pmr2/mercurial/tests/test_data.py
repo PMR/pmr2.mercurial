@@ -12,19 +12,18 @@ import zope.component
 import zope.interface
 from zope.app.component.hooks import getSiteManager
 from zope.publisher.browser import TestRequest
+from zope.configuration.xmlconfig import xmlconfig
+from zope.component.tests import clearZCML
+
+import Acquisition
+
+from pmr2.app.workspace.exceptions import *
+from pmr2.app.workspace.interfaces import IWorkspace
 
 import pmr2.mercurial
 from pmr2.mercurial import *
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.adapter import *
-from pmr2.mercurial.exceptions import *
-
-from pmr2.app.workspace.interfaces import IWorkspace
-
-from zope.configuration.xmlconfig import xmlconfig
-from zope.component.tests import clearZCML
-
-import Acquisition
 
 from pmr2.mercurial.tests import util
 

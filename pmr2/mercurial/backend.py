@@ -16,7 +16,8 @@ import mercurial.hgweb.protocol
 from mercurial.hgweb.request import wsgirequest
 from mercurial.hgweb import webcommands
 
-from pmr2.mercurial.exceptions import *
+from pmr2.app.workspace.exceptions import *
+
 from pmr2.mercurial import utils, ext
 from ext import hg_copy, hg_rename
 

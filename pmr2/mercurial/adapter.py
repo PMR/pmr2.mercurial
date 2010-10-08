@@ -12,9 +12,10 @@ from mercurial.hgweb import webcommands, webutil
 from mercurial.hgweb.common import ErrorResponse
 from mercurial import error
 
+from pmr2.app.workspace.exceptions import *
+
 from pmr2.mercurial import FixedRevWebStorage, WebStorage, Storage, Sandbox
 from pmr2.mercurial.interfaces import *
-from pmr2.mercurial.exceptions import *
 from pmr2.mercurial.utils import archive, tmpl, filter
 
 from pmr2.app.interfaces import IPMR2GlobalSettings

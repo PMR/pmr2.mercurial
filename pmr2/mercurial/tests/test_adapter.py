@@ -16,10 +16,10 @@ import pmr2.mercurial
 from pmr2.mercurial import *
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.adapter import *
-from pmr2.mercurial.exceptions import *
 
 from pmr2.app.interfaces import IPMR2GlobalSettings
 
+from pmr2.app.workspace.exceptions import *
 from pmr2.app.workspace.interfaces import IWorkspace
 from pmr2.app.workspace.interfaces import IWorkspaceContainer
 from pmr2.app.workspace.content import Workspace

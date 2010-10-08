@@ -4,8 +4,9 @@ import shutil
 import os
 from os.path import dirname, join
 
+from pmr2.app.workspace.exceptions import *
+
 from pmr2.mercurial import *
-from pmr2.mercurial.exceptions import *
 
 class RepositoryInitTestCase(unittest.TestCase):
 
