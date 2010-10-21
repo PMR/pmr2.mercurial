@@ -21,8 +21,6 @@ from pmr2.app.interfaces import IPMR2GlobalSettings
 
 from pmr2.app.workspace.exceptions import *
 from pmr2.app.workspace.interfaces import IWorkspace
-from pmr2.app.workspace.interfaces import IWorkspaceContainer
-from pmr2.app.workspace.content import Workspace
 
 from zope.configuration.xmlconfig import xmlconfig
 from zope.component.tests import clearZCML

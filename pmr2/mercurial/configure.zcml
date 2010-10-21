@@ -25,5 +25,25 @@
       name="PMR2StorageRequest"
       />
 
+  <!--
+  Imported from pmr2.app.workspace
+  -->
+
+  <adapter
+      for="pmr2.app.workspace.interfaces.IWorkspace"
+      factory="pmr2.mercurial.adapter.PMR2StorageURIResolver"
+      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
+      name="PMR2StorageURIResolver"
+      />
+
+  <adapter
+      for="pmr2.app.workspace.interfaces.IWorkspace
+           zope.publisher.interfaces.IPublisherRequest
+           zope.publisher.interfaces.IPublishTraverse"
+      factory="pmr2.mercurial.adapter.PMR2StorageRequestViewAdapter"
+      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
+      name="PMR2StorageRequestView"
+      />
+
 </configure>
 
