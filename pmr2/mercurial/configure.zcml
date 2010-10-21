@@ -2,6 +2,16 @@
     xmlns="http://namespaces.zope.org/zope"
     i18n_domain="zope">
   
+  <utility
+      name="mercurial"
+      factory="pmr2.mercurial.utility.MercurialStorageUtility"
+      provides="pmr2.app.workspace.interfaces.IStorageUtility"
+      />
+
+  <!--
+  Legacy and Deprecated
+  -->
+
   <adapter
       for="pmr2.app.workspace.interfaces.IWorkspace"
       factory="pmr2.mercurial.adapter.PMR2StorageAdapter"

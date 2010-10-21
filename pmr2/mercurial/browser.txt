@@ -1,0 +1,98 @@
+=================
+Mercurial Backend
+=================
+
+This module is the Mercurial backend for PMR2 Workspaces.  While this
+was originally depended by pmr2.app, it has been changed to provide a
+utility that will create and instantiate the storage backend using the
+standardized utility and adapter within PMR2.  While the most efficient
+way is to have this adapter provide the data directly, we opt to use
+the provided classes instead.
+
+-----
+Setup
+-----
+
+Before we get started, we need to import the required classes and
+extract the test data archive.
+::
+
+    >>> from pmr2.app.workspace import browser
+    >>> from pmr2.testing.base import TestRequest
+    >>> from plone.z3cform.tests import setup_defaults
+    >>> from pmr2.app.workspace.content import *
+    >>> self.extractAndCreate()
+
+---------
+Rendering
+---------
+
+Here we will use data from a real repository with actual data.  The
+method to extract archive of the test repo will be called.
+::
+
+    >>> request = TestRequest()
+    >>> wkspc = self.portal.workspace.pmr2hgtest
+    >>> testpage = browser.WorkspacePage(wkspc, request)
+    >>> result = testpage()
+    >>> '<th>Log</th>' in result
+    True
+    >>> len([i for i in self.pmr2hgtest_revs if i in result]) == len(
+    ...     self.pmr2hgtest_revs)
+    True
+
+Now for a file listing.
+::
+
+    >>> request = TestRequest()
+    >>> testpage = browser.WorkspaceFilePage(wkspc, request)
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> label = u'Location: pmr2hgtest @ %s / \n' % \
+    ...     self.pmr2hgtest_revs[-1][:12]
+    >>> testpage.label() == label
+    True
+    >>> 'file1' in result
+    True
+    >>> 'file2' in result
+    True
+    >>> 'README' in result
+    True
+
+Subdirectories should work.  We use a different repo for this that has
+the subdirectories in place, and we do need a proper revision for the
+request_subpath.
+::
+
+    >>> wkspc = self.portal.workspace.rdfmodel
+    >>> request = TestRequest()
+    >>> subpath = self.rdfmodel_revs[-1:] + ['component']
+    >>> request['rev'] = self.rdfmodel_revs[-1] 
+    >>> request['request_subpath'] = ['component']
+    >>> testpage = browser.WorkspaceFilePage(wkspc, request)
+    >>> testpage.traverse_subpath = subpath
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> label = u'Location: rdfmodel @ %s / ' % request['rev'][:12]
+    >>> label_result = testpage.label()
+    >>> label_result.startswith(label)
+    True
+    >>> subpath[1] in label_result
+    True
+    >>> 'module.cellml' in result
+    True
+
+Bad revision results in not found.
+::
+
+    >>> subpath = ['abcdef1234567890', 'component']
+    >>> request = TestRequest()
+    >>> request['rev'] = 'abcdef1234567890'
+    >>> request['request_subpath'] = ['component']
+    >>> testpage = browser.WorkspaceFilePage(wkspc, request)
+    >>> testpage.traverse_subpath = subpath
+    >>> testpage.update()
+    Traceback (most recent call last):
+    ...
+    HTTPNotFound: 404 Not Found
+    ...
