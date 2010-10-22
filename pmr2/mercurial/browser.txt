@@ -27,8 +27,10 @@ extract the test data archive.
 Rendering
 ---------
 
-Here we will use data from a real repository with actual data.  The
-method to extract archive of the test repo will be called.
+Now that the Mercurial archive has been extracted and with its workspace
+object created, we can now test the basic rendering of the landing page.
+The log listing on that page should contain every commit id within, with
+the correct datetime formatting.
 ::
 
     >>> request = TestRequest()
@@ -40,8 +42,12 @@ method to extract archive of the test repo will be called.
     >>> len([i for i in self.pmr2hgtest_revs if i in result]) == len(
     ...     self.pmr2hgtest_revs)
     True
+    >>> '<td>2010-08-30 13:08 +1200</td>' in result
+    True
+    >>> '<td>2009-09-22 12:16 +1200</td>' in result
+    True
 
-Now for a file listing.
+Now for a file listing, without any traverse subpaths.
 ::
 
     >>> request = TestRequest()
@@ -50,7 +56,7 @@ Now for a file listing.
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s / \n' % \
     ...     self.pmr2hgtest_revs[-1][:12]
-    >>> testpage.label() == label
+    >>> testpage.label == label
     True
     >>> 'file1' in result
     True
@@ -59,22 +65,52 @@ Now for a file listing.
     >>> 'README' in result
     True
 
+Now for a file listing, just traversing down a previous revision, using
+a partial revision id.
+::
+
+    >>> subpath = [self.pmr2hgtest_revs[7][:6]]
+    >>> testpage = self.traverse(wkspc, browser.WorkspaceFilePage, subpath)
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> label = u'Location: pmr2hgtest @ %s / \n' % \
+    ...     self.pmr2hgtest_revs[7][:12]
+    >>> testpage.label == label
+    True
+    >>> 'file1' in result
+    True
+    >>> 'file2' in result
+    True
+    >>> 'README' in result
+    True
+    >>> print result
+    <...
+    ...
+        <tr>
+          <td>drwxr-xr-x</td>
+          <td></td>
+          <td></td>
+          <td><a href=".../pmr2hgtest/@@file/.../1">1</a></td>
+    ...
+        <tr>
+          <td>-rw-r--r--</td>
+          <td>2010-08-30 13:09 +1200</td>
+          <td>43</td>
+          <td><a href=".../pmr2hgtest/@@file/.../README">README</a></td>
+    ...
+
 Subdirectories should work.  We use a different repo for this that has
 the subdirectories in place, and we do need a proper revision for the
 request_subpath.
 ::
 
     >>> wkspc = self.portal.workspace.rdfmodel
-    >>> request = TestRequest()
-    >>> subpath = self.rdfmodel_revs[-1:] + ['component']
-    >>> request['rev'] = self.rdfmodel_revs[-1] 
-    >>> request['request_subpath'] = ['component']
-    >>> testpage = browser.WorkspaceFilePage(wkspc, request)
-    >>> testpage.traverse_subpath = subpath
+    >>> subpath = [self.rdfmodel_revs[2], 'component']
+    >>> testpage = self.traverse(wkspc, browser.WorkspaceFilePage, subpath)
     >>> testpage.update()
     >>> result = testpage()
-    >>> label = u'Location: rdfmodel @ %s / ' % request['rev'][:12]
-    >>> label_result = testpage.label()
+    >>> label = u'Location: rdfmodel @ %s / ' % testpage.request['rev'][:12]
+    >>> label_result = testpage.label
     >>> label_result.startswith(label)
     True
     >>> subpath[1] in label_result
@@ -86,11 +122,7 @@ Bad revision results in not found.
 ::
 
     >>> subpath = ['abcdef1234567890', 'component']
-    >>> request = TestRequest()
-    >>> request['rev'] = 'abcdef1234567890'
-    >>> request['request_subpath'] = ['component']
-    >>> testpage = browser.WorkspaceFilePage(wkspc, request)
-    >>> testpage.traverse_subpath = subpath
+    >>> testpage = self.traverse(wkspc, browser.WorkspaceFilePage, subpath)
     >>> testpage.update()
     Traceback (most recent call last):
     ...

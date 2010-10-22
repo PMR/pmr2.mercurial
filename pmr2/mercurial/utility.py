@@ -42,6 +42,16 @@ class MercurialStorage(BaseStorage):
         # Default checkout value to set `self.rev`.
         self.checkout('tip')
 
+    __datefmt_filter = {
+        'rfc2822': 'rfc822date',
+        'rfc3339': 'rfc3339date',
+        'iso8601': 'isodate',
+    }
+
+    @property
+    def datefmtfilter(self):
+        return MercurialStorage.__datefmt_filter[self.datefmt]
+
     @property
     def rev(self):
         return self.__rev
@@ -65,7 +75,9 @@ class MercurialStorage(BaseStorage):
         return self.storage.file(self.rev, path)
 
     def fileinfo(self, path):
-        return self.storage.fileinfo(self.rev, path)
+        data = self.storage.fileinfo(self.rev, path).next()
+        data['date'] = filter(data['date'], self.datefmtfilter)
+        return data
 
     def files(self):
         return self.storage.raw_manifest(self.rev)
