@@ -1,6 +1,7 @@
 import zope.component
 
 from pmr2.app.interfaces import IPMR2GlobalSettings
+from pmr2.app.workspace.exceptions import *
 from pmr2.app.workspace.storage import StorageUtility
 from pmr2.app.workspace.storage import BaseStorage
 
@@ -56,16 +57,18 @@ class MercurialStorage(BaseStorage):
         ctx = self.storage._changectx(rev)
         self.__rev = ctx.node().encode('hex')
 
+    # XXX WRITE UNIT TEST CASES
+
     def file(self, path):
         # XXX see backend.Storage for why we need to pass self.rev and
         # why that should be unnecessary.
-        self.storage.file(self.rev, path)
+        return self.storage.file(self.rev, path)
 
     def fileinfo(self, path):
-        self.storage.fileinfo(self.rev, path)
+        return self.storage.fileinfo(self.rev, path)
 
     def files(self):
-        self.storage.raw_manifest(self.rev)
+        return self.storage.raw_manifest(self.rev)
 
     def listdir(self, path):
         """\
@@ -115,13 +118,13 @@ class MercurialStorage(BaseStorage):
                     emptydirs.append(k)
                 h = v
 
-            path = '%s%s' % (abspath, d)
+            p = '%s%s' % (path, d)
             yield self.format(**{
                 'permissions': 'drwxr-xr-x',
                 'node': self.rev,
                 'date': '',
                 'size': '',
-                'path': path,
+                'path': p,
                 'contents': '',  # XXX
                 # 'emptydirs': '/'.join(emptydirs),
             })
@@ -132,20 +135,17 @@ class MercurialStorage(BaseStorage):
             yield self.format(**{
                 'permissions': '-rw-r--r--',
                 'node': self.rev,
-                'date': fctx.date(),
+                'date': filter(fctx.date(), self.datefmtfilter),
                 'size': fctx.size(),
                 'path': full,
                 'contents': '',  # XXX
             })
 
     def pathinfo(self, path):
-        """\
-        This is a default implementation.  If a specific backend 
-        supports other types of path resolution, this method can be
-        safely overridden provided the correct data is returned.
-        """
 
-        try:
+        if path in self.files():
+            data = self.fileinfo(path)
+        else:
             listing = self.listdir(path)
             # consider using an iterator?
             contents = lambda: listing
@@ -157,9 +157,6 @@ class MercurialStorage(BaseStorage):
                 'path': path,
                 'contents': contents,
             })
-        except PathNotDirError:
-            # then path must be a file
-            data = self.fileinfo(path)
         return data
 
     def log(self, start, count, branch=None):
