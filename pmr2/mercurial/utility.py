@@ -67,7 +67,8 @@ class MercurialStorage(BaseStorage):
         ctx = self.storage._changectx(rev)
         self.__rev = ctx.node().encode('hex')
 
-    # XXX WRITE UNIT TEST CASES
+    # Unit tests would be useful here, even if this class will only
+    # produce output for the browser classes.
 
     def file(self, path):
         # XXX see backend.Storage for why we need to pass self.rev and
@@ -76,8 +77,12 @@ class MercurialStorage(BaseStorage):
 
     def fileinfo(self, path):
         data = self.storage.fileinfo(self.rev, path).next()
+        ctx = self.storage._ctx
+        fctx = ctx.filectx(data['file'])
         data['date'] = filter(data['date'], self.datefmtfilter)
-        return data
+        data['size'] = fctx.size()
+        data['contents'] = lambda: self.file(data['file'])
+        return self.format(**data)
 
     def files(self):
         return self.storage.raw_manifest(self.rev)
