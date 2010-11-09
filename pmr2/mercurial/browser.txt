@@ -17,7 +17,7 @@ Before we get started, we need to import the required classes and
 extract the test data archive.
 ::
 
-    >>> from pmr2.app.workspace import browser
+    >>> from pmr2.app.workspace.browser import browser
     >>> from pmr2.testing.base import TestRequest
     >>> from plone.z3cform.tests import setup_defaults
     >>> from pmr2.app.workspace.content import *
@@ -51,12 +51,12 @@ Now for a file listing, without any traverse subpaths.
 ::
 
     >>> request = TestRequest()
-    >>> testpage = browser.WorkspaceFilePage(wkspc, request)
+    >>> testpage = browser.FileInfoPage(wkspc, request)
     >>> testpage.update()
     >>> result = testpage()
-    >>> label = u'Location: pmr2hgtest @ %s / \n' % \
+    >>> label = u'Location: pmr2hgtest @ %s /' % \
     ...     self.pmr2hgtest_revs[-1][:12]
-    >>> testpage.label == label
+    >>> label in result
     True
     >>> 'file1' in result
     True
@@ -70,12 +70,12 @@ a partial revision id.
 ::
 
     >>> subpath = [self.pmr2hgtest_revs[7][:6]]
-    >>> testpage = self.traverse(wkspc, browser.WorkspaceFilePage, subpath)
+    >>> testpage = self.traverse(wkspc, browser.FileInfoPage, subpath)
     >>> testpage.update()
     >>> result = testpage()
-    >>> label = u'Location: pmr2hgtest @ %s / \n' % \
+    >>> label = u'Location: pmr2hgtest @ %s /' % \
     ...     self.pmr2hgtest_revs[7][:12]
-    >>> testpage.label == label
+    >>> label in result
     True
     >>> 'file1' in result
     True
@@ -106,14 +106,12 @@ request_subpath.
 
     >>> wkspc = self.portal.workspace.rdfmodel
     >>> subpath = [self.rdfmodel_revs[2], 'component']
-    >>> testpage = self.traverse(wkspc, browser.WorkspaceFilePage, subpath)
+    >>> testpage = self.traverse(wkspc, browser.FileInfoPage, subpath)
     >>> testpage.update()
     >>> result = testpage()
-    >>> label = u'Location: rdfmodel @ %s / ' % testpage.request['rev'][:12]
-    >>> label_result = testpage.label
-    >>> label_result.startswith(label)
-    True
-    >>> subpath[1] in label_result
+    >>> label = u'Location: rdfmodel @ %s / component' % \
+    ...     testpage.request['rev'][:12]
+    >>> label in result
     True
     >>> 'module.cellml' in result
     True
@@ -122,7 +120,7 @@ Bad revision results in not found.
 ::
 
     >>> subpath = ['abcdef1234567890', 'component']
-    >>> testpage = self.traverse(wkspc, browser.WorkspaceFilePage, subpath)
+    >>> testpage = self.traverse(wkspc, browser.FileInfoPage, subpath)
     >>> testpage.update()
     Traceback (most recent call last):
     ...
