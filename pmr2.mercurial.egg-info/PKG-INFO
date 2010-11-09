@@ -37,10 +37,10 @@ Description: Introduction
         Changelog
         =========
         
-        0.1 - Unreleased
-        ----------------
+        0.3 - Released (2010-06-21)
+        ---------------------------
         
-        * Initial release
+        * Updated to support/use Mercurial 1.5
         
         
 Platform: UNKNOWN
