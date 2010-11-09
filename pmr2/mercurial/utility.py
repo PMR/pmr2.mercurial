@@ -81,6 +81,7 @@ class MercurialStorage(BaseStorage):
         fctx = ctx.filectx(data['file'])
         data['date'] = filter(data['date'], self.datefmtfilter)
         data['size'] = fctx.size()
+        data['path'] = path  # we use full path here
         data['contents'] = lambda: self.file(data['file'])
         return self.format(**data)
 
