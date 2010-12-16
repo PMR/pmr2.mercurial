@@ -86,7 +86,7 @@ class MercurialStorage(BaseStorage):
         return self.format(**data)
 
     def files(self):
-        return self.storage.raw_manifest(self.rev)
+        return sorted(self.storage.raw_manifest(self.rev).keys())
 
     def listdir(self, path):
         """\
@@ -98,6 +98,9 @@ class MercurialStorage(BaseStorage):
         path = webutil.cleanpath(self.storage._repo, path)
         mf = ctx.manifest()
         node = ctx.node()
+
+        if path in mf:
+            raise PathNotDirError('path is dir: ' + path)
 
         files = {}
         dirs = {}
@@ -127,37 +130,42 @@ class MercurialStorage(BaseStorage):
         if mf and not files and not dirs:
             raise PathNotFoundError('path not found: ' + path)
 
-        for d in sorted(dirs):
-            emptydirs = []
-            h = dirs[d]
-            while isinstance(h, dict) and len(h) == 1:
-                k, v = h.items()[0]
-                if v:
-                    emptydirs.append(k)
-                h = v
+        def listdir():
+            for d in sorted(dirs):
+                emptydirs = []
+                h = dirs[d]
+                while isinstance(h, dict) and len(h) == 1:
+                    k, v = h.items()[0]
+                    if v:
+                        emptydirs.append(k)
+                    h = v
 
-            p = '%s%s' % (path, d)
-            yield self.format(**{
-                'permissions': 'drwxr-xr-x',
-                'node': self.rev,
-                'date': '',
-                'size': '',
-                'path': p,
-                'contents': '',  # XXX
-                # 'emptydirs': '/'.join(emptydirs),
-            })
+                p = '%s%s' % (path, d)
+                yield self.format(**{
+                    'permissions': 'drwxr-xr-x',
+                    'node': self.rev,
+                    'date': '',
+                    'size': '',
+                    'path': p,
+                    'contents': '',  # XXX
+                    # 'emptydirs': '/'.join(emptydirs),
+                })
 
-        for f in sorted(files):
-            full = files[f]
-            fctx = ctx.filectx(full)
-            yield self.format(**{
-                'permissions': '-rw-r--r--',
-                'node': self.rev,
-                'date': filter(fctx.date(), self.datefmtfilter),
-                'size': fctx.size(),
-                'path': full,
-                'contents': '',  # XXX
-            })
+            for f in sorted(files):
+                full = files[f]
+                fctx = ctx.filectx(full)
+                yield self.format(**{
+                    'permissions': '-rw-r--r--',
+                    'node': self.rev,
+                    'date': filter(fctx.date(), self.datefmtfilter),
+                    'size': str(fctx.size()),
+                    'path': full,
+                    'desc': fctx.description(),
+                    # XXX if self.rev changes, this can result in inconsistency
+                    'contents': lambda: self.file(p),
+                })
+
+        return listdir()
 
     def pathinfo(self, path):
 
