@@ -3,8 +3,10 @@ import tempfile
 import shutil
 import os
 import datetime
-from os.path import dirname, join
+import tarfile
+from os.path import basename, dirname, join
 from logging import getLogger
+from cStringIO import StringIO
 
 logger = getLogger('pmr2.mercurial.tests')
 imported = True
@@ -44,6 +46,10 @@ class DummyWorkspace(object):
         # Dummy value for use by the dummy settings object below.
         self.path = path
         self.storage = 'mercurial'
+
+    @property
+    def id(self):
+        return basename(self.path)
 
 
 class MercurialSettings(object):
@@ -405,6 +411,102 @@ class UtilityTestCase(unittest.TestCase):
             'contents': result['contents'],
         }
         self.assertEqual(answer, result)
+
+    def test_700_archiveFormats(self):
+        storage = MercurialStorage(self.workspace)
+        formats = storage.archiveFormats
+        self.assertEqual(formats, ['tgz', 'tgz.all', 'tar',])
+
+    def test_710_archiveInfo(self):
+        storage = MercurialStorage(self.workspace)
+        info = storage.archiveInfo('tar')
+        self.assertEqual(info, {
+            'name': 'Tarball',
+            'ext': '.tar',
+        })
+        info = storage.archiveInfo('tgz')
+        self.assertEqual(info, {
+            'name': 'Tarball (gzipped)',
+            'ext': '.tar.gz',
+        })
+
+    def test_720_archive_tar(self):
+        storage = MercurialStorage(self.workspace)
+
+        storage.checkout(self.revs[3])
+        rev = self.revs[3][:12]
+        root = '%s-%s' % (self.workspace.id, rev)
+        names = ['file1', 'file2', 'file3', 'nested/deep/dir/file']
+        contents = [self.files[1], self.files[1], self.files[0],
+                    self.nested_file,]
+        answer = zip(['%s/%s' % (root, n) for n in names], contents)
+
+        archive = storage.archive('tar')
+        stream = StringIO(archive)
+        tfile = tarfile.open('test', 'r', stream)
+        result = [i.name for i in tfile.getmembers()]
+
+        for a, c in answer:
+            self.assert_(a in result)
+            self.assertEqual(tfile.extractfile(a).read(), c)
+
+    def test_721_archive_tar(self):
+        storage = MercurialStorage(self.workspace)
+
+        storage.checkout(self.revs[0])
+        rev = self.revs[0][:12]
+        root = '%s-%s' % (self.workspace.id, rev)
+        names = ['file1', 'file2']
+        contents = [self.files[0], self.files[0],]
+        answer = zip(['%s/%s' % (root, n) for n in names], contents)
+
+        archive = storage.archive('tar')
+        stream = StringIO(archive)
+        tfile = tarfile.open('test', 'r', stream)
+        result = [i.name for i in tfile.getmembers()]
+
+        for a, c in answer:
+            self.assert_(a in result)
+            self.assertEqual(tfile.extractfile(a).read(), c)
+
+    def test_730_archive_tgz(self):
+        storage = MercurialStorage(self.workspace)
+
+        storage.checkout(self.revs[3])
+        rev = self.revs[3][:12]
+        root = '%s-%s' % (self.workspace.id, rev)
+        names = ['file1', 'file2', 'file3', 'nested/deep/dir/file']
+        contents = [self.files[1], self.files[1], self.files[0],
+                    self.nested_file,]
+        answer = zip(['%s/%s' % (root, n) for n in names], contents)
+
+        archive = storage.archive('tgz')
+        stream = StringIO(archive)
+        tfile = tarfile.open('test', 'r:gz', stream)
+        result = [i.name for i in tfile.getmembers()]
+
+        for a, c in answer:
+            self.assert_(a in result)
+            self.assertEqual(tfile.extractfile(a).read(), c)
+
+    def test_731_archive_tgz(self):
+        storage = MercurialStorage(self.workspace)
+
+        storage.checkout(self.revs[0])
+        rev = self.revs[0][:12]
+        root = '%s-%s' % (self.workspace.id, rev)
+        names = ['file1', 'file2']
+        contents = [self.files[0], self.files[0],]
+        answer = zip(['%s/%s' % (root, n) for n in names], contents)
+
+        archive = storage.archive('tgz')
+        stream = StringIO(archive)
+        tfile = tarfile.open('test', 'r:gz', stream)
+        result = [i.name for i in tfile.getmembers()]
+
+        for a, c in answer:
+            self.assert_(a in result)
+            self.assertEqual(tfile.extractfile(a).read(), c)
 
 
 def test_suite():

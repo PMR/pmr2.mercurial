@@ -1,12 +1,19 @@
+import re
+from os.path import basename
+from cStringIO import StringIO
 import zope.component
+
+from mercurial.hgweb import webutil
+from mercurial import archival
 
 from pmr2.app.interfaces import IPMR2GlobalSettings
 from pmr2.app.workspace.exceptions import *
+from pmr2.app.workspace.interfaces import IWorkspace
 from pmr2.app.workspace.storage import StorageUtility
 from pmr2.app.workspace.storage import BaseStorage
 
-from mercurial.hgweb import webutil
 from pmr2.mercurial import backend
+from pmr2.mercurial.utils import archive
 from pmr2.mercurial.utils import filter
 
 
@@ -48,6 +55,13 @@ class MercurialStorage(BaseStorage):
         'iso8601': 'isodate',
     }
 
+    _archiveFormats = {
+        # 'zip': ('Zip File', '.zip',),
+        'tar': ('Tarball', '.tar',),
+        'tgz': ('Tarball (gzipped)', '.tar.gz',),
+        'tgz.all': ('Tarball Subrepo (gzipped)', '.tar.gz',),
+    }
+
     @property
     def datefmtfilter(self):
         return MercurialStorage.__datefmt_filter[self.datefmt]
@@ -59,6 +73,32 @@ class MercurialStorage(BaseStorage):
     @property
     def shortrev(self):
         return filter(self.rev, 'short')
+
+    def hg_archive(self, prefix, format):
+        dest = StringIO()
+        repo = self.storage.repo
+        decode = True
+        matchfn = None
+        mtime = None
+        archival.archive(repo, dest, self.rev, format,
+                         decode, matchfn, prefix, mtime)
+        return dest.getvalue()
+
+    def archive_tar(self):
+        arctype = 'tar'
+        # could derive friendly branch name from rev to append on top
+        # of revision id.
+        reponame = re.sub(r"\W+", "-", basename(self.storage._rpath))
+        name = "%s-%s" % (reponame, self.shortrev)
+        return self.hg_archive(name, arctype)
+
+    def archive_tgz(self):
+        arctype = 'tgz'
+        # could derive friendly branch name from rev to append on top
+        # of revision id.
+        reponame = re.sub(r"\W+", "-", basename(self.storage._rpath))
+        name = "%s-%s" % (reponame, self.shortrev)
+        return self.hg_archive(name, arctype)
 
     def basename(self, name):
         return name.split('/')[-1]
