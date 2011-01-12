@@ -15,6 +15,7 @@ import pmr2.testing
 from pmr2.app.workspace.content import WorkspaceContainer
 from pmr2.app.workspace.content import Workspace
 from pmr2.app.workspace.tests.base import WorkspaceDocTestCase
+from pmr2.app.exposure.tests.base import ExposureDocTestCase
 
 
 @onsetup
@@ -35,26 +36,38 @@ teardown()
 ptc.setupPloneSite(products=('pmr2.app',))
 
 
-class MercurialDocTestCase(WorkspaceDocTestCase):
+class MercurialDocTestCase(ExposureDocTestCase):
 
-    def extractAndCreate(self):
+    def setUp(self):
         # create real Hg repos, to be called only after workspace is
         # created and model root path is assigned
+        super(MercurialDocTestCase, self).setUp()
+
         import pmr2.mercurial.tests
         from pmr2.app.workspace.content import Workspace
         from pmr2.mercurial.tests import util
-        self.portal['workspace'] = WorkspaceContainer()
+
         p = self.pmr2.createDir(self.portal.workspace)
         util.extract_archive(p)
+
         p2a_test = join(dirname(pmr2.testing.__file__), 'pmr2.app.testdata.tgz')
         util.extract_archive(p, p2a_test)
-        self.portal.workspace['pmr2hgtest'] = Workspace('pmr2hgtest')
-        self.portal.workspace['pmr2hgtest'].storage = 'mercurial'
-        self.portal.workspace['rdfmodel'] = Workspace('rdfmodel')
-        self.portal.workspace['rdfmodel'].storage = 'mercurial'
+
         self.pmr2hgtest_revs = util.ARCHIVE_REVS
         self.rdfmodel_revs = [
             'b94d1701154be42acf63ee6b4bd4a99d09ba043c',
             '2647d4389da6345c26d168bbb831f6512322d4f9',
             '006f11cd9211abd2a879df0f6c7f27b9844a8ff2',
         ]
+
+        def mkhg_workspace(name):
+            # XXX temporary method to work with existing tests until
+            # this is replaced
+            w = Workspace(name)
+            w.storage = u'mercurial'
+            self.portal.workspace[name] = w
+
+        mkhg_workspace('import1')
+        mkhg_workspace('import2')
+        mkhg_workspace('pmr2hgtest')
+        mkhg_workspace('rdfmodel')
