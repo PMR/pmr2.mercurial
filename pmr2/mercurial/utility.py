@@ -56,10 +56,8 @@ class MercurialStorage(BaseStorage):
     }
 
     _archiveFormats = {
-        # 'zip': ('Zip File', '.zip',),
-        'tar': ('Tarball', '.tar',),
-        'tgz': ('Tarball (gzipped)', '.tar.gz',),
-        'tgz.all': ('Tarball Subrepo (gzipped)', '.tar.gz',),
+        'zip': ('Zip File', '.zip', 'application/zip',),
+        'tgz': ('Tarball (gzipped)', '.tar.gz', 'application/x-tar',),
     }
 
     @property
@@ -84,8 +82,8 @@ class MercurialStorage(BaseStorage):
                          decode, matchfn, prefix, mtime)
         return dest.getvalue()
 
-    def archive_tar(self):
-        arctype = 'tar'
+    def archive_zip(self):
+        arctype = 'zip'
         # could derive friendly branch name from rev to append on top
         # of revision id.
         reponame = re.sub(r"\W+", "-", basename(self.storage._rpath))

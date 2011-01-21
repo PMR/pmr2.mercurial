@@ -4,6 +4,7 @@ import shutil
 import os
 import datetime
 import tarfile
+import zipfile
 from os.path import basename, dirname, join
 from logging import getLogger
 from cStringIO import StringIO
@@ -415,22 +416,24 @@ class UtilityTestCase(unittest.TestCase):
     def test_700_archiveFormats(self):
         storage = MercurialStorage(self.workspace)
         formats = storage.archiveFormats
-        self.assertEqual(formats, ['tgz', 'tgz.all', 'tar',])
+        self.assertEqual(formats, ['tgz', 'zip',])
 
     def test_710_archiveInfo(self):
         storage = MercurialStorage(self.workspace)
-        info = storage.archiveInfo('tar')
-        self.assertEqual(info, {
-            'name': 'Tarball',
-            'ext': '.tar',
-        })
         info = storage.archiveInfo('tgz')
         self.assertEqual(info, {
             'name': 'Tarball (gzipped)',
             'ext': '.tar.gz',
+            'mimetype': 'application/x-tar',
+        })
+        info = storage.archiveInfo('zip')
+        self.assertEqual(info, {
+            'name': 'Zip File',
+            'ext': '.zip',
+            'mimetype': 'application/zip',
         })
 
-    def test_720_archive_tar(self):
+    def test_720_archive_zip(self):
         storage = MercurialStorage(self.workspace)
 
         storage.checkout(self.revs[3])
@@ -441,16 +444,16 @@ class UtilityTestCase(unittest.TestCase):
                     self.nested_file,]
         answer = zip(['%s/%s' % (root, n) for n in names], contents)
 
-        archive = storage.archive('tar')
+        archive = storage.archive('zip')
         stream = StringIO(archive)
-        tfile = tarfile.open('test', 'r', stream)
-        result = [i.name for i in tfile.getmembers()]
+        zfile = zipfile.ZipFile(stream, 'r')
+        result = [i.filename for i in zfile.infolist()]
 
         for a, c in answer:
             self.assert_(a in result)
-            self.assertEqual(tfile.extractfile(a).read(), c)
+            self.assertEqual(zfile.read(a), c)
 
-    def test_721_archive_tar(self):
+    def test_721_archive_zip(self):
         storage = MercurialStorage(self.workspace)
 
         storage.checkout(self.revs[0])
@@ -460,14 +463,14 @@ class UtilityTestCase(unittest.TestCase):
         contents = [self.files[0], self.files[0],]
         answer = zip(['%s/%s' % (root, n) for n in names], contents)
 
-        archive = storage.archive('tar')
+        archive = storage.archive('zip')
         stream = StringIO(archive)
-        tfile = tarfile.open('test', 'r', stream)
-        result = [i.name for i in tfile.getmembers()]
+        zfile = zipfile.ZipFile(stream, 'r')
+        result = [i.filename for i in zfile.infolist()]
 
         for a, c in answer:
             self.assert_(a in result)
-            self.assertEqual(tfile.extractfile(a).read(), c)
+            self.assertEqual(zfile.read(a), c)
 
     def test_730_archive_tgz(self):
         storage = MercurialStorage(self.workspace)
