@@ -17,10 +17,54 @@ Before we get started, we need to import the required classes and
 extract the test data archive.
 ::
 
+    >>> import zope.component
     >>> from pmr2.app.workspace.browser import browser
     >>> from pmr2.testing.base import TestRequest
     >>> from plone.z3cform.tests import setup_defaults
+    >>> from pmr2.app.workspace.interfaces import *
     >>> from pmr2.app.workspace.content import *
+
+---------------------------------
+Adding Mercurial backed workspace
+---------------------------------
+
+Once Mercurial is installed, it should have been registered as one of
+the backends that can be added inside the workspace creation form.  This
+can be checked as so:
+::
+
+    >>> request = TestRequest()
+    >>> form = browser.WorkspaceStorageCreateForm(
+    ...     self.portal.workspace, request)
+    >>> result = form()
+    >>> 'mercurial' in result
+    True
+
+Now the data can be filled out and submitted.
+::
+
+    >>> request = TestRequest(form={
+    ...     'form.widgets.id': u'foobarbaz',
+    ...     'form.widgets.title': u'Foo Bar Baz',
+    ...     'form.widgets.storage': [u'mercurial'],
+    ...     'form.buttons.add': 1,
+    ... })
+    >>> form = browser.WorkspaceStorageCreateForm(
+    ...     self.portal.workspace, request)
+    >>> form.update()
+
+The Mercurial workspace should have been created, and it could be
+adapted into a usable a MercurialStorage instance.
+::
+
+    >>> foobarbaz = self.portal.workspace.foobarbaz
+    >>> foobarbaz.title
+    u'Foo Bar Baz'
+    >>> storage = zope.component.getAdapter(foobarbaz, IStorage)
+    >>> list(storage.log('0', 0))
+    []
+
+We can test this new empty workspace later by pushing some data to it.
 
 ---------
 Rendering
