@@ -29,8 +29,21 @@ class MercurialStorageUtility(StorageUtility):
     def acquireFrom(self, context):
         return MercurialStorage(context)
 
+    def protocol(self, context, request):
+        storage = self.acquireFrom(context)
+        try:
+            return storage.storage.process_request(request)
+        except AttributeError:
+            # XXX need better/more elegant way to handle non-WSGI 
+            # compatible objects.
+            return
+
 
 class MercurialStorage(BaseStorage):
+
+    # One of the future item is to modify this to more closely interact
+    # with the mercurial library rather than go through one of our
+    # previous abstractions.
     
     def __init__(self, context):
         rp = zope.component.getUtility(IPMR2GlobalSettings).dirOf(context)

@@ -1,6 +1,6 @@
-=================
-Mercurial Backend
-=================
+====================================================
+Workspace browser interaction with Mercurial Backend
+====================================================
 
 This module is the Mercurial backend for PMR2 Workspaces.  While this
 was originally depended by pmr2.app, it has been changed to provide a
@@ -169,3 +169,43 @@ Bad revision results in not found.
     ...
     HTTPNotFound: 404 Not Found
     ...
+
+------------------------------
+Mercurial Protocol Integration
+------------------------------
+
+As the base workspace view has the protocol viewer integrated, we can
+generate protocol requests.  Before that, we need to mock up some WSGI
+elements that Mercurial expects and uses.
+::
+
+    >>> from mercurial.hgweb.server import _error_logger
+    >>> def start_response(status, headers):
+    ...     print status
+    >>> from cStringIO import StringIO
+    >>> env = {
+    ...     'CONTENT_TYPE': 'text/plain',
+    ...     'REQUEST_METHOD': 'GET',
+    ...     'SCRIPT_NAME': 'workspace_view',
+    ...     'QUERY_STRING': 'cmd=heads',
+    ...     'wsgi.input':  StringIO(''),
+    ...     'wsgi.version': (1, 0),
+    ...     'wsgi.errors': None,
+    ...     'wsgi.multithread': False,
+    ...     'wsgi.multiprocess': False,
+    ...     'wsgi.run_once': True,
+    ... }
+    >>> context = self.portal.workspace.rdfmodel
+    >>> request = TestRequest(form={
+    ...     'cmd': 'heads',
+    ... })
+    >>> request.environ = env
+    >>> request.stdin = env['wsgi.input']
+    >>> testpage = browser.WorkspacePage(context, request)
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> print result
+    eef1e9af39a79b2fc47ef978f8e61e853bad54e2
+
+This output is generated from the Mercurial protocol.  We could emulate
+the entire clone/pull/push as further tests.
