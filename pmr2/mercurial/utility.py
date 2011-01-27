@@ -26,7 +26,7 @@ class MercurialStorageUtility(StorageUtility):
         # already exists.
         backend.Storage.create(rp, ffa=True)
 
-    def __call__(self, context):
+    def acquireFrom(self, context):
         return MercurialStorage(context)
 
 
