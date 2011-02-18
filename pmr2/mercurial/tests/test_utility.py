@@ -37,7 +37,6 @@ except:
 import pmr2.mercurial
 from pmr2.mercurial import *
 from pmr2.mercurial.interfaces import *
-from pmr2.mercurial.adapter import *
 from pmr2.mercurial.utility import *
 
 
@@ -112,7 +111,7 @@ class UtilityTestCase(unittest.TestCase):
         # register custom utility that would have normally been done.
         sm = getSiteManager()
         sm.registerUtility(MercurialSettings(), IPMR2GlobalSettings)
-        self.settings = getUtility(IPMR2GlobalSettings)
+        self.settings = zope.component.getUtility(IPMR2GlobalSettings)
         self.workspace = DummyWorkspace(self.repodir)
 
     def tearDown(self):

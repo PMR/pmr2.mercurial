@@ -8,52 +8,5 @@
       provides="pmr2.app.workspace.interfaces.IStorageUtility"
       />
 
-  <!--
-  Legacy and Deprecated
-  -->
-
-  <adapter
-      for="pmr2.app.workspace.interfaces.IWorkspace"
-      factory="pmr2.mercurial.adapter.PMR2StorageAdapter"
-      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
-      name="PMR2Storage"
-      />
-
-  <adapter
-      for="pmr2.app.workspace.interfaces.IWorkspace
-           *"
-      factory="pmr2.mercurial.adapter.PMR2StorageFixedRevAdapter"
-      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
-      name="PMR2StorageFixedRev"
-      />
-
-  <adapter
-      for="pmr2.app.workspace.interfaces.IWorkspace
-           zope.publisher.interfaces.IPublisherRequest"
-      factory="pmr2.mercurial.adapter.PMR2StorageRequestAdapter"
-      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
-      name="PMR2StorageRequest"
-      />
-
-  <!--
-  Imported from pmr2.app.workspace
-  -->
-
-  <adapter
-      for="pmr2.app.workspace.interfaces.IWorkspace"
-      factory="pmr2.mercurial.adapter.PMR2StorageURIResolver"
-      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
-      name="PMR2StorageURIResolver"
-      />
-
-  <adapter
-      for="pmr2.app.workspace.interfaces.IWorkspace
-           zope.publisher.interfaces.IPublisherRequest
-           zope.publisher.interfaces.IPublishTraverse"
-      factory="pmr2.mercurial.adapter.PMR2StorageRequestViewAdapter"
-      provides="pmr2.mercurial.interfaces.IPMR2HgWorkspaceAdapter"
-      name="PMR2StorageRequestView"
-      />
-
 </configure>
 
