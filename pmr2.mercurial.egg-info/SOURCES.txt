@@ -12,7 +12,6 @@ pmr2.mercurial.egg-info/paster_plugins.txt
 pmr2.mercurial.egg-info/requires.txt
 pmr2.mercurial.egg-info/top_level.txt
 pmr2/mercurial/__init__.py
-pmr2/mercurial/adapter.py
 pmr2/mercurial/backend.py
 pmr2/mercurial/configure.zcml
 pmr2/mercurial/ext.py
@@ -25,9 +24,8 @@ pmr2/mercurial/tests/base.py
 pmr2/mercurial/tests/file1
 pmr2/mercurial/tests/file2
 pmr2/mercurial/tests/file3
-pmr2/mercurial/tests/test_adapter.py
-pmr2/mercurial/tests/test_data.py
 pmr2/mercurial/tests/test_doctest.py
 pmr2/mercurial/tests/test_repository.py
+pmr2/mercurial/tests/test_utility.py
 pmr2/mercurial/tests/test_utils.py
 pmr2/mercurial/tests/util.py
