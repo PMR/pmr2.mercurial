@@ -7,6 +7,12 @@
       factory="pmr2.mercurial.utility.MercurialStorageUtility"
       provides="pmr2.app.workspace.interfaces.IStorageUtility"
       />
+  
+  <utility
+      name="mercurial"
+      component="pmr2.mercurial.protocol.mercurial"
+      provides="pmr2.app.workspace.pas.interfaces.IStorageProtocol"
+      />
 
 </configure>
 
