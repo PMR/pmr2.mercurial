@@ -99,7 +99,7 @@ Now for a file listing, without any traverse subpaths.
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s /' % \
     ...     self.pmr2hgtest_revs[-1][:12]
-    >>> label in result
+    >>> label in testpage.label
     True
     >>> 'file1' in result
     True
@@ -118,7 +118,7 @@ a partial revision id.
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s /' % \
     ...     self.pmr2hgtest_revs[7][:12]
-    >>> label in result
+    >>> label in testpage.label
     True
     >>> 'file1' in result
     True
@@ -154,7 +154,7 @@ request_subpath.
     >>> result = testpage()
     >>> label = u'Location: rdfmodel @ %s / component' % \
     ...     testpage.request['rev'][:12]
-    >>> label in result
+    >>> label in testpage.label
     True
     >>> 'module.cellml' in result
     True
