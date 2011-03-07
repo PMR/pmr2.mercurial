@@ -94,7 +94,7 @@ Now for a file listing, without any traverse subpaths.
 ::
 
     >>> request = TestRequest()
-    >>> testpage = browser.FileInfoPage(wkspc, request)
+    >>> testpage = browser.FilePage(wkspc, request)
     >>> testpage.update()
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s /' % \
@@ -113,7 +113,7 @@ a partial revision id.
 ::
 
     >>> subpath = [self.pmr2hgtest_revs[7][:6]]
-    >>> testpage = self.traverse(wkspc, browser.FileInfoPage, subpath)
+    >>> testpage = self.traverse(wkspc, browser.FilePage, subpath)
     >>> testpage.update()
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s /' % \
@@ -149,7 +149,7 @@ request_subpath.
 
     >>> wkspc = self.portal.workspace.rdfmodel
     >>> subpath = [self.rdfmodel_revs[2], 'component']
-    >>> testpage = self.traverse(wkspc, browser.FileInfoPage, subpath)
+    >>> testpage = self.traverse(wkspc, browser.FilePage, subpath)
     >>> testpage.update()
     >>> result = testpage()
     >>> label = u'Location: rdfmodel @ %s / component' % \
@@ -163,7 +163,7 @@ Bad revision results in not found.
 ::
 
     >>> subpath = ['abcdef1234567890', 'component']
-    >>> testpage = self.traverse(wkspc, browser.FileInfoPage, subpath)
+    >>> testpage = self.traverse(wkspc, browser.FilePage, subpath)
     >>> testpage.update()
     Traceback (most recent call last):
     ...
