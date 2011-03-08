@@ -6,7 +6,7 @@ import zope.component
 from mercurial.hgweb import webutil
 from mercurial import archival
 
-from pmr2.app.interfaces import IPMR2GlobalSettings
+from pmr2.app.settings.interfaces import IPMR2GlobalSettings
 from pmr2.app.workspace.exceptions import *
 from pmr2.app.workspace.interfaces import IWorkspace
 from pmr2.app.workspace.storage import StorageUtility
