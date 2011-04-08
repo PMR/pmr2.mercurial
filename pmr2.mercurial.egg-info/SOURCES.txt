@@ -1,6 +1,10 @@
+MANIFEST.in
 README.txt
 setup.cfg
 setup.py
+docs/HISTORY.txt
+docs/LICENSE.GPL
+docs/LICENSE.txt
 pmr2/__init__.py
 pmr2.mercurial.egg-info/PKG-INFO
 pmr2.mercurial.egg-info/SOURCES.txt
@@ -13,6 +17,7 @@ pmr2.mercurial.egg-info/requires.txt
 pmr2.mercurial.egg-info/top_level.txt
 pmr2/mercurial/__init__.py
 pmr2/mercurial/backend.py
+pmr2/mercurial/browser.txt
 pmr2/mercurial/configure.zcml
 pmr2/mercurial/ext.py
 pmr2/mercurial/hooks.py
@@ -25,6 +30,7 @@ pmr2/mercurial/tests/base.py
 pmr2/mercurial/tests/file1
 pmr2/mercurial/tests/file2
 pmr2/mercurial/tests/file3
+pmr2/mercurial/tests/pmr2hgtest.tgz
 pmr2/mercurial/tests/test_doctest.py
 pmr2/mercurial/tests/test_repository.py
 pmr2/mercurial/tests/test_utility.py
