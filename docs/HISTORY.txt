@@ -1,6 +1,15 @@
 Changelog
 =========
 
+0.4 - Released (2011-04-08)
+---------------------------
+
+* Updated to support pmr2.app-0.4
+
+  - This is now a full storage plugin for workspaces and no longer
+    depended on by pmr2.app.
+
+
 0.3 - Released (2010-06-21)
 ---------------------------
 
