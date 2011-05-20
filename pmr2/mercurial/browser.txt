@@ -138,6 +138,20 @@ a partial revision id.
     >>> '<td>43</td>' in result
     True
 
+Now test the listing of the container that contains import links.
+::
+
+    >>> subpath = [self.pmr2hgtest_revs[7], 'ext']
+    >>> testpage = self.traverse(wkspc, browser.FilePage, subpath)
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> label = u'Location: pmr2hgtest @ %s / ext' % \
+    ...     self.pmr2hgtest_revs[7][:12]
+    >>> 'http://models.example.com/w/import1' in result
+    True
+    >>> 'http://models.example.com/w/import2' in result
+    True
+
 Subdirectories should work.  We use a different repo for this that has
 the subdirectories in place, and we do need a proper revision for the
 request_subpath.

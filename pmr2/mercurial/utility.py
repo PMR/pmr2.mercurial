@@ -15,6 +15,7 @@ from pmr2.app.workspace.storage import BaseStorage
 from pmr2.mercurial import backend
 from pmr2.mercurial.utils import archive
 from pmr2.mercurial.utils import filter
+from pmr2.mercurial.utils import list_subrepo
 
 
 class MercurialStorageUtility(StorageUtility):
@@ -188,6 +189,8 @@ class MercurialStorage(BaseStorage):
         if mf and not files and not dirs:
             raise PathNotFoundError('path not found: ' + path)
 
+        subrepos = list_subrepo(substate, abspath)
+
         def listdir():
 
             if not path == '':
@@ -202,6 +205,33 @@ class MercurialStorage(BaseStorage):
                     'contents': '',  # XXX
                     # 'emptydirs': '/'.join(emptydirs),
                 })
+                
+            for n, v in sorted(subrepos):
+                p = ''
+                url, rev, repotype = v
+                if v[0] is None:
+                    # can't really link it anywhere...
+                    p = '%s%s' % (path, n)
+                else:
+                    # XXX 'file' is specific to PMR2, bitbucket uses
+                    # 'src' to access the human friendly view.
+                    p = '%s/file/%s' % (url, rev)
+                result = self.format(**{
+                    'permissions': 'lrwxrwxrwx',
+                    'type': 'external',
+                    'node': self.rev,
+                    'date': '',
+                    'size': '',
+                    'path': p,
+                    'desc': '',
+                    'contents': '',  # XXX
+                    # 'emptydirs': '/'.join(emptydirs),
+                })
+                
+                # need to "fix" some values
+                result['basename'] = n  # name
+                result['fullpath'] = p  # full url
+                yield result
 
             for d in sorted(dirs):
                 emptydirs = []
