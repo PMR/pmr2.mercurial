@@ -127,21 +127,16 @@ a partial revision id.
     True
     >>> 'README' in result
     True
-    >>> print result
-    <...
-    ...
-        <tr>
-          <td>drwxr-xr-x</td>
-          <td></td>
-          <td></td>
-          <td><a href=".../pmr2hgtest/@@file/.../1">1</a></td>
-    ...
-        <tr>
-          <td>-rw-r--r--</td>
-          <td>2010-08-30 13:09 +1200</td>
-          <td>43</td>
-          <td><a href=".../pmr2hgtest/@@file/.../README">README</a></td>
-    ...
+    >>> ('http://nohost/plone/workspace/pmr2hgtest/file/'
+    ...  '98a09b3682f1ba24bc9e873fea335cbe6e10e66e/1') in result
+    True
+    >>> ('http://nohost/plone/workspace/pmr2hgtest/file/'
+    ...  '98a09b3682f1ba24bc9e873fea335cbe6e10e66e/README') in result
+    True
+    >>> '<td>2010-08-30 13:09 +1200</td>' in result
+    True
+    >>> '<td>43</td>' in result
+    True
 
 Subdirectories should work.  We use a different repo for this that has
 the subdirectories in place, and we do need a proper revision for the
