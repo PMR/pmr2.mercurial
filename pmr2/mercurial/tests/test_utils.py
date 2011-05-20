@@ -21,27 +21,8 @@ class WebdirTestCase(unittest.TestCase):
         for i in self.repodirs[1:4]:
             os.mkdir(join(self.rootdir, i, utils._rstub))
 
-    def tearDown(self):
-        shutil.rmtree(self.rootdir, ignore_errors=True)
-
-    def test_standard(self):
-        self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
-
-    def test_with_files(self):
-        # stick a random file in place
-        o = open(join(self.rootdir, 'file'), 'w')
-        o.write('')
-        o.close()
-        self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
-
-    def test_no_permission(self):
-        # stick an unreadable directory in place
-        os.mkdir(join(self.rootdir, 'noperm'), 0)
-        self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
-
-    def test_match_subrepo(self):
         # we emulate input
-        substate = {
+        self.substate = {
             'mod1': (
                 'http://models.example.com/mod1',
                 '12345',
@@ -60,30 +41,61 @@ class WebdirTestCase(unittest.TestCase):
             ),
         }
 
+    def tearDown(self):
+        shutil.rmtree(self.rootdir, ignore_errors=True)
+
+    def test_standard(self):
+        self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
+
+    def test_with_files(self):
+        # stick a random file in place
+        o = open(join(self.rootdir, 'file'), 'w')
+        o.write('')
+        o.close()
+        self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
+
+    def test_no_permission(self):
+        # stick an unreadable directory in place
+        os.mkdir(join(self.rootdir, 'noperm'), 0)
+        self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
+
+
+    def test_match_subrepo_root(self):
+        substate = self.substate
         result = utils.match_subrepo(substate, 'mod1').next()
         self.assertEqual(result[''], '_subrepo')
         self.assertEqual(result['path'], '')
         self.assertEqual(result['location'], 'http://models.example.com/mod1')
         self.assertEqual(result['rev'], '12345')
 
+    def test_match_subrepo_root_file(self):
+        substate = self.substate
         result = utils.match_subrepo(substate, 'mod2/component/test').next()
         self.assertEqual(result[''], '_subrepo')
         self.assertEqual(result['path'], 'component/test')
         self.assertEqual(result['location'], 'https://models.example.com/mod2')
         self.assertEqual(result['rev'], '67890')
 
+    def test_match_subrepo_nested_file(self):
+        substate = self.substate
         result = utils.match_subrepo(substate, 'nested/mod3/file').next()
         self.assertEqual(result[''], '_subrepo')
         self.assertEqual(result['path'], 'file')
         self.assertEqual(result['location'], 'https://models.example.com/mod3')
         self.assertEqual(result['rev'], 'abcde')
 
+    def test_match_subrepo_nested_nofile(self):
+        substate = self.substate
         result = utils.match_subrepo(substate, 'nested/mod3file')
         self.assertEqual(result, None)
 
+    def test_match_subrepo_missing(self):
+        substate = self.substate
         result = utils.match_subrepo(substate, 'mod3/component/test')
         self.assertEqual(result, None)
 
+    def test_match_subrepo_invalid(self):
+        substate = self.substate
         self.assertRaises(exceptions.SubrepoPathUnsupportedError,
             utils.match_subrepo, substate, 'fail/local/test')
 
