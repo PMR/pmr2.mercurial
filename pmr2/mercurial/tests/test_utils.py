@@ -26,18 +26,22 @@ class WebdirTestCase(unittest.TestCase):
             'mod1': (
                 'http://models.example.com/mod1',
                 '12345',
+                'hg',
             ), 
             'mod2': (
                 'https://models.example.com/mod2',
                 '67890',
+                'hg',
             ),
             'nested/mod3': (
                 'https://models.example.com/mod3',
                 'abcde',
+                'hg',
             ),
             'fail': (
                 '/tmp/fail',
                 'f0123',
+                'hg',
             ),
         }
 
