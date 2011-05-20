@@ -65,6 +65,8 @@ class MercurialDocTestCase(ExposureDocTestCase):
             # this is replaced
             w = Workspace(name)
             w.storage = u'mercurial'
+            w.title = u''
+            w.description = u''
             self.portal.workspace[name] = w
 
         mkhg_workspace('import1')

@@ -46,6 +46,7 @@ Now the data can be filled out and submitted.
     >>> request = TestRequest(form={
     ...     'form.widgets.id': u'foobarbaz',
     ...     'form.widgets.title': u'Foo Bar Baz',
+    ...     'form.widgets.description': u'Foo Bar Baz',
     ...     'form.widgets.storage': [u'mercurial'],
     ...     'form.buttons.add': 1,
     ... })
