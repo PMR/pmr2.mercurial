@@ -182,6 +182,20 @@ class MercurialStorage(BaseStorage):
             raise PathNotFoundError('path not found: ' + path)
 
         def listdir():
+
+            if not path == '':
+                yield self.format(**{
+                    'permissions': 'drwxr-xr-x',
+                    'type': None,
+                    'node': self.rev,
+                    'date': '',
+                    'size': '',
+                    'path': '%s..' % path,
+                    'desc': '',
+                    'contents': '',  # XXX
+                    # 'emptydirs': '/'.join(emptydirs),
+                })
+
             for d in sorted(dirs):
                 emptydirs = []
                 h = dirs[d]
