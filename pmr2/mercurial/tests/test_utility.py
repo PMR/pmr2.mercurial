@@ -203,6 +203,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file1',
             'mimetype': result['mimetype'],
             'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
         }
 
         # XXX this test _may_ fail at around midnight as the test data
@@ -226,6 +229,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'nested',
             'mimetype': result[0]['mimetype'],
             'contents': result[0]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'folder',
         },
         {
             'author': '',
@@ -238,6 +244,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file1',
             'mimetype': result[1]['mimetype'],
             'contents': result[1]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'document',
         },
         {
             'author': '',
@@ -250,6 +259,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file2',
             'mimetype': result[2]['mimetype'],
             'contents': result[2]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'document',
         },
         {
             'author': '',
@@ -262,6 +274,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file3',
             'mimetype': result[3]['mimetype'],
             'contents': result[3]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'document',
         },
         ]
         self.assertEqual(answer, result)
@@ -278,10 +293,28 @@ class UtilityTestCase(unittest.TestCase):
             'node': self.revs[3],
             'date': result[0]['date'],
             'size': '',
-            'basename': 'deep',
-            'file': 'nested/deep',
+            'basename': '..',
+            'file': 'nested/..',
             'mimetype': result[0]['mimetype'],
             'contents': result[0]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+        },
+        {
+            'author': '',
+            'permissions': 'drwxr-xr-x',
+            'desc': '',
+            'node': self.revs[3],
+            'date': result[1]['date'],
+            'size': '',
+            'basename': 'deep',
+            'file': 'nested/deep',
+            'mimetype': result[1]['mimetype'],
+            'contents': result[1]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'folder',
         },
         ]
         self.assertEqual(answer, result)
@@ -293,15 +326,33 @@ class UtilityTestCase(unittest.TestCase):
         answer = [
         {
             'author': '',
+            'permissions': 'drwxr-xr-x',
+            'desc': '',
+            'node': self.revs[3],
+            'date': result[0]['date'],
+            'size': '',
+            'basename': '..',
+            'file': 'nested/deep/dir/..',
+            'mimetype': result[0]['mimetype'],
+            'contents': result[0]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+        },
+        {
+            'author': '',
             'permissions': '-rw-r--r--',
             'desc': 'added4',
             'node': self.revs[3],
-            'date': result[0]['date'],
+            'date': result[1]['date'],
             'size': str(len(self.nested_file)),
             'basename': 'file',
             'file': 'nested/deep/dir/file',
-            'mimetype': result[0]['mimetype'],
-            'contents': result[0]['contents'],
+            'mimetype': result[1]['mimetype'],
+            'contents': result[1]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'document',
         },
         ]
         self.assertEqual(answer, result)
@@ -322,6 +373,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file1',
             'mimetype': result[0]['mimetype'],
             'contents': result[0]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'document',
         },
         {
             'author': '',
@@ -334,6 +388,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file2',
             'mimetype': result[1]['mimetype'],
             'contents': result[1]['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': 'document',
         },
         ]
         self.assertEqual(answer, result)
@@ -372,6 +429,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'file1',
             'mimetype': result['mimetype'],
             'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
         }
         self.assertEqual(answer, result)
         self.assertEqual(result['mimetype'](), 'text/plain; charset=us-ascii')
@@ -391,6 +451,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': 'nested/deep/dir',
             'mimetype': result['mimetype'],
             'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
         }
         self.assertEqual(answer, result)
 
@@ -409,6 +472,9 @@ class UtilityTestCase(unittest.TestCase):
             'file': self.nested_name,
             'mimetype': result['mimetype'],
             'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
         }
         self.assertEqual(answer, result)
 

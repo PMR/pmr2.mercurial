@@ -186,7 +186,7 @@ class MercurialStorage(BaseStorage):
             if not path == '':
                 yield self.format(**{
                     'permissions': 'drwxr-xr-x',
-                    'type': None,
+                    'contenttype': None,
                     'node': self.rev,
                     'date': '',
                     'size': '',
@@ -208,10 +208,12 @@ class MercurialStorage(BaseStorage):
                 p = '%s%s' % (path, d)
                 yield self.format(**{
                     'permissions': 'drwxr-xr-x',
+                    'contenttype': 'folder',
                     'node': self.rev,
                     'date': '',
                     'size': '',
                     'path': p,
+                    'desc': '',
                     'contents': '',  # XXX
                     # 'emptydirs': '/'.join(emptydirs),
                 })
@@ -221,6 +223,7 @@ class MercurialStorage(BaseStorage):
                 fctx = ctx.filectx(full)
                 yield self.format(**{
                     'permissions': '-rw-r--r--',
+                    'contenttype': 'document',  # XXX based on css type (lazy)
                     'node': self.rev,
                     'date': filter(fctx.date(), self.datefmtfilter),
                     'size': str(fctx.size()),
