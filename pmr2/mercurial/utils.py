@@ -31,6 +31,30 @@ def tmpl(name, **kw):
     kw[''] = name
     yield kw
 
+def list_subrepo(substate, abspath):
+    """
+    Given a substate dict (like result of context.substate) and the
+    abspath, return any subrepos that may be available in that abspath.
+    """
+
+    if not substate:
+        return []
+
+    fragments = abspath.split('/')
+    depth_wanted = len(fragments)
+    # prepending the empty string token as first element since the
+    # substate keys don't have a prepended '/'.
+    entries = [([''] + i.split('/'), i) for i in substate.keys()]
+    result = []
+    for key, value in entries:
+        if len(key) == depth_wanted and key[:-1] == fragments[:-1]:
+            ss = substate[value]
+            if not (ss[0].startswith('http://') or 
+                    ss[0].startswith('https://')):
+                ss = (None, None,)
+            result.append((key[-1], ss,))
+    return result
+    
 def match_subrepo(substate, path):
     """
     Given a substate dict (like result of context.substate), match path,

@@ -63,6 +63,45 @@ class WebdirTestCase(unittest.TestCase):
         os.mkdir(join(self.rootdir, 'noperm'), 0)
         self.assert_(utils.webdir(self.rootdir), self.repodirs[1:4])
 
+    def test_list_subrepo_root(self):
+        substate = self.substate
+        result = utils.list_subrepo(substate, '/')
+        answer = [
+            ('mod1', (
+                'http://models.example.com/mod1',
+                '12345',
+                'hg',
+            )),
+            ('mod2', (
+                'https://models.example.com/mod2',
+                '67890',
+                'hg',
+            )),
+            ('fail', (
+                None,
+                None,
+            )),
+        ]
+        self.assertEqual(result, answer)
+
+    def test_list_subrepo_dir(self):
+        substate = self.substate
+        result = utils.list_subrepo(substate, '/nested/')
+        answer =  [
+            ('mod3', (
+                'https://models.example.com/mod3',
+                'abcde',
+                'hg',
+            )),
+        ]
+        self.assertEqual(result, answer)
+
+    def test_list_subrepo_missing(self):
+        substate = self.substate
+        # this is in the subrepo not the manifest
+        result = utils.list_subrepo(substate, '/mod1/')
+        answer = []
+        self.assertEqual(result, answer)
 
     def test_match_subrepo_root(self):
         substate = self.substate

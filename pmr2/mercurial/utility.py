@@ -149,12 +149,19 @@ class MercurialStorage(BaseStorage):
         path = webutil.cleanpath(self.storage._repo, path)
         mf = ctx.manifest()
         node = ctx.node()
+        substate = ctx.substate
+
+        def fullviewpath(base, node, file):
+            # XXX this needs to be some kind of resolution method
+            view = 'file'
+            return '%s/%s/%s/%s' % (base, view, node, file)
 
         if path in mf:
             raise PathNotDirError('path is dir: ' + path)
 
         files = {}
         dirs = {}
+        subrepos = []
 
         if path and path[-1] != "/":
             path += "/"
