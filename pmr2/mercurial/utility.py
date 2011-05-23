@@ -218,7 +218,7 @@ class MercurialStorage(BaseStorage):
                     p = '%s/file/%s' % (url, rev)
                 result = self.format(**{
                     'permissions': 'lrwxrwxrwx',
-                    'contenttype': 'external',
+                    'contenttype': repotype,
                     'node': self.rev,
                     'date': '',
                     'size': '',

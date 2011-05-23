@@ -1,6 +1,9 @@
 <configure 
     xmlns="http://namespaces.zope.org/zope"
+    xmlns:browser="http://namespaces.zope.org/browser"
     i18n_domain="zope">
+
+  <include file="profiles.zcml" />
   
   <utility
       name="mercurial"
@@ -12,6 +15,12 @@
       name="mercurial"
       component="pmr2.mercurial.protocol.mercurial"
       provides="pmr2.app.workspace.pas.interfaces.IStorageProtocol"
+      />
+
+  <browser:resourceDirectory
+      name="pmr2.mercurial.resource"
+      directory="resource"
+      layer=".interfaces.IAppLayer"
       />
 
 </configure>
