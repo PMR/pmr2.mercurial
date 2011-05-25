@@ -22,9 +22,14 @@ pmr2/mercurial/configure.zcml
 pmr2/mercurial/ext.py
 pmr2/mercurial/hooks.py
 pmr2/mercurial/interfaces.py
+pmr2/mercurial/profiles.zcml
 pmr2/mercurial/protocol.py
 pmr2/mercurial/utility.py
 pmr2/mercurial/utils.py
+pmr2/mercurial/profiles/default/browserlayer.xml
+pmr2/mercurial/profiles/default/cssregistry.xml
+pmr2/mercurial/resource/contentype-mercurial.png
+pmr2/mercurial/resource/mercurial.css
 pmr2/mercurial/tests/__init__.py
 pmr2/mercurial/tests/base.py
 pmr2/mercurial/tests/file1
