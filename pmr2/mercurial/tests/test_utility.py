@@ -106,7 +106,7 @@ class UtilityTestCase(unittest.TestCase):
         self.rev = self.repo.rev
 
         clearZCML()
-        xmlconfig(open(join(pmr2.mercurial.__path__[0], 'configure.zcml')))
+        xmlconfig(open(join(pmr2.mercurial.__path__[0], 'utility.zcml')))
 
         # register custom utility that would have normally been done.
         sm = getSiteManager()

@@ -4,18 +4,7 @@
     i18n_domain="zope">
 
   <include file="profiles.zcml" />
-  
-  <utility
-      name="mercurial"
-      factory="pmr2.mercurial.utility.MercurialStorageUtility"
-      provides="pmr2.app.workspace.interfaces.IStorageUtility"
-      />
-  
-  <utility
-      name="mercurial"
-      component="pmr2.mercurial.protocol.mercurial"
-      provides="pmr2.app.workspace.pas.interfaces.IStorageProtocol"
-      />
+  <include file="utility.zcml" />
 
   <browser:resourceDirectory
       name="pmr2.mercurial.resource"
