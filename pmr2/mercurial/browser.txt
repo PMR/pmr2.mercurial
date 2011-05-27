@@ -86,10 +86,6 @@ the correct datetime formatting.
     >>> len([i for i in self.pmr2hgtest_revs if i in result]) == len(
     ...     self.pmr2hgtest_revs)
     True
-    >>> '<td>2010-08-30 13:08 +1200</td>' in result
-    True
-    >>> '<td>2009-09-22 12:16 +1200</td>' in result
-    True
 
 Now for a file listing, without any traverse subpaths.
 ::
@@ -132,8 +128,6 @@ a partial revision id.
     True
     >>> ('http://nohost/plone/workspace/pmr2hgtest/file/'
     ...  '98a09b3682f1ba24bc9e873fea335cbe6e10e66e/README') in result
-    True
-    >>> '<td>2010-08-30 13:09 +1200</td>' in result
     True
     >>> '<td>43</td>' in result
     True
