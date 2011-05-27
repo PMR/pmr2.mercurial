@@ -231,7 +231,7 @@ class Storage(object):
         self._repo = repo
 
     def log(self, rev=None, branch=None, shortlog=False, 
-            datefmt=None, maxchanges=None):
+            datefmt=None, maxchanges=None, *a, **kw):
         """\
         This method returns the history of the repository.
 

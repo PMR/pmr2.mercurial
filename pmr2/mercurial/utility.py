@@ -290,6 +290,28 @@ class MercurialStorage(BaseStorage):
             })
         return data
 
-    def log(self, start, count, branch=None):
-        log = self.storage.log(rev=start, branch=branch, maxchanges=count)
-        return log.next()['entries']()
+    def log(self, start, count, branch=None, shortlog=False):
+        def buildnav(nav):
+            # This is based on the navlist structure as expected by
+            # pmr2.app.browser.page.NavPage
+            # We have to merge Mercurial's before and after structure
+            # together.
+            result = []
+            for i in nav['before']():
+                result.append({
+                    'href': i['node'],
+                    'label': i['label'],
+                })
+            for i in nav['after']():
+                result.append({
+                    'href': i['node'],
+                    'label': i['label'],
+                })
+            return result
+
+        log = self.storage.log(rev=start, branch=branch, maxchanges=count,
+                               shortlog=shortlog)
+        results = log.next()
+        changenav = results['changenav'][0]
+        self._lastnav = buildnav(changenav)
+        return results['entries']()
