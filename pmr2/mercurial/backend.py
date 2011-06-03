@@ -748,7 +748,10 @@ class Sandbox(Storage):
         self._ui.status('pushing to %s\n' % (dest))
         if revs:
             revs = [self._repo.lookup(rev) for rev in revs]
-        r = self._repo.push(other, force, revs=revs)
+        try:
+            r = self._repo.push(other, force, revs=revs)
+        except Abort:
+            raise ProtocolError()
         # check to see if this revision is present on destination
         # XXX assuming other is localrepo
         try:

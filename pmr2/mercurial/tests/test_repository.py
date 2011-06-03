@@ -410,8 +410,7 @@ class SandboxTestCase(unittest.TestCase):
         target.commit('targetadd', 'user4 <4@example.com>')
 
         # multiple heads.
-        result = target.push()
-        self.assert_(not result)
+        self.assertRaises(ProtocolError, target.push)
 
         # forcing should work
         result = target.push(force=True)
