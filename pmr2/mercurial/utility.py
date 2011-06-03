@@ -30,14 +30,22 @@ class MercurialStorageUtility(StorageUtility):
     def acquireFrom(self, context):
         return MercurialStorage(context)
 
+    # due to future extensions there may be cmd attributes that will
+    # be sent by clients, so we can't prematurely filter protocol
+    # like this:
+    #
+    # def isprotocol(self, request):
+    #     return webutil.protocol.iscmd(request.get('cmd', None))
+    #
+    # So we do this:
+
+    def isprotocol(self, request):
+        return request.get('cmd', None) is not None
+
     def protocol(self, context, request):
         storage = self.acquireFrom(context)
-        try:
-            return storage.storage.process_request(request)
-        except AttributeError:
-            # XXX need better/more elegant way to handle non-WSGI 
-            # compatible objects.
-            return
+        # Assume WSGI compatible.
+        return storage.storage.process_request(request)
 
 
 class MercurialStorage(BaseStorage):

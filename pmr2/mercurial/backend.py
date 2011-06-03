@@ -431,7 +431,9 @@ class WebStorage(hgweb, Storage):
         # and the clients always use the old URL structure
 
         cmd = req.form.get('cmd', [''])[0]
-        if cmd and cmd in protocol.__all__:
+        if cmd:
+            if not protocol.iscmd(cmd):
+                raise UnsupportedCommandError('%s is unsupported' % cmd)
             # XXX not sure why?
             #if query:
             #    raise ErrorResponse(HTTP_NOT_FOUND)
@@ -443,9 +445,7 @@ class WebStorage(hgweb, Storage):
                         if cmd == 'unbundle':
                             req.drain()
                         raise
-                method = getattr(protocol, cmd)
-                #return method(self.repo, req)
-                content = method(self.repo, req)
+                content = protocol.call(self.repo, req, cmd)
             except ErrorResponse, inst:
                 req.respond(inst, protocol.HGTYPE)
                 # XXX doing write here because the other methods expect
@@ -455,8 +455,10 @@ class WebStorage(hgweb, Storage):
                     return []
                 write('%s\n' % inst.message,)
                 return out.getvalue()
-        else:
-            raise UnsupportedCommandError('%s is unsupported' % cmd)
+            except KeyError, e:
+                # XXX why can't Mercurial's exception be a bit more
+                # consistent...
+                raise ProtocolError()
 
         # XXX writing value out here because method expects it.
         for chunk in content:

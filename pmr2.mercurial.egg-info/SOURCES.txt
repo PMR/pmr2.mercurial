@@ -25,6 +25,7 @@ pmr2/mercurial/interfaces.py
 pmr2/mercurial/profiles.zcml
 pmr2/mercurial/protocol.py
 pmr2/mercurial/utility.py
+pmr2/mercurial/utility.zcml
 pmr2/mercurial/utils.py
 pmr2/mercurial/profiles/default/browserlayer.xml
 pmr2/mercurial/profiles/default/cssregistry.xml

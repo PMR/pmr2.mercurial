@@ -1,5 +1,7 @@
+from cStringIO import StringIO
 from os.path import join, dirname
 import tarfile
+from pmr2.testing.base import TestRequest
 
 ARCHIVE_NAME = 'pmr2hgtest.tgz'
 ARCHIVE_PATH = join(dirname(__file__), ARCHIVE_NAME)
@@ -21,3 +23,26 @@ def extract_archive(path, archive_path=ARCHIVE_PATH):
     for m in mem:
         tf.extract(m, path)
     tf.close()
+
+def build_wsgi_env(script, qs, method='GET'):
+    env = {
+        'CONTENT_TYPE': 'text/plain',
+        'REQUEST_METHOD': method,
+        'SCRIPT_NAME': script,
+        'QUERY_STRING': qs,
+        'wsgi.input':  StringIO(''),
+        'wsgi.version': (1, 0),
+        'wsgi.errors': None,
+        'wsgi.multithread': False,
+        'wsgi.multiprocess': False,
+        'wsgi.run_once': True,
+    }
+    return env
+
+def build_wsgi_request(script, q, method='GET'):
+    qs = '&'.join(['%s=%s' % (k, v) for k, v in q.iteritems()])
+    env = build_wsgi_env('workspace_view', qs)
+    request = TestRequest(form=q)
+    request.environ = env
+    request.stdin = env['wsgi.input']
+    return request

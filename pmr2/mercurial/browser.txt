@@ -197,33 +197,61 @@ generate protocol requests.  Before that, we need to mock up some WSGI
 elements that Mercurial expects and uses.
 ::
 
-    >>> from mercurial.hgweb.server import _error_logger
-    >>> def start_response(status, headers):
-    ...     print status
-    >>> from cStringIO import StringIO
-    >>> env = {
-    ...     'CONTENT_TYPE': 'text/plain',
-    ...     'REQUEST_METHOD': 'GET',
-    ...     'SCRIPT_NAME': 'workspace_view',
-    ...     'QUERY_STRING': 'cmd=heads',
-    ...     'wsgi.input':  StringIO(''),
-    ...     'wsgi.version': (1, 0),
-    ...     'wsgi.errors': None,
-    ...     'wsgi.multithread': False,
-    ...     'wsgi.multiprocess': False,
-    ...     'wsgi.run_once': True,
-    ... }
+    >>> from pmr2.mercurial.tests.util import build_wsgi_request
     >>> context = self.portal.workspace.rdfmodel
-    >>> request = TestRequest(form={
+    >>> request = build_wsgi_request('workspace_view', {
     ...     'cmd': 'heads',
     ... })
-    >>> request.environ = env
-    >>> request.stdin = env['wsgi.input']
-    >>> testpage = browser.WorkspacePage(context, request)
+    >>> testpage = browser.WorkspacePageView(context, request)
     >>> testpage.update()
     >>> result = testpage()
     >>> print result
     eef1e9af39a79b2fc47ef978f8e61e853bad54e2
 
-This output is generated from the Mercurial protocol.  We could emulate
-the entire clone/pull/push as further tests.
+The output is generated from the Mercurial protocol, and in this case
+the heads of the underlying repo is returned.
+
+In the case of commands that can return no value, the standard browser
+page should never be rendered.
+::
+
+    >>> context = self.portal.workspace.rdfmodel
+    >>> request = build_wsgi_request('workspace_view', {
+    ...     'cmd': 'listkeys',
+    ...     'namespace': 'bookmarks',
+    ... })
+    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> print result
+
+In the case of future commands that we don't support, the anticipated
+400 status code should be returned:
+::
+
+    >>> context = self.portal.workspace.rdfmodel
+    >>> request = build_wsgi_request('workspace_view', {
+    ...     'cmd': 'badcmd',
+    ... })
+    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage.update()
+    Traceback (most recent call last):
+    ...
+    HTTPBadRequest: 400 Bad Request
+    ...
+
+Or even an incomplete protocol request.
+::
+
+    >>> context = self.portal.workspace.rdfmodel
+    >>> request = build_wsgi_request('workspace_view', {
+    ...     'cmd': 'listkeys',
+    ... })
+    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage.update()
+    Traceback (most recent call last):
+    ...
+    HTTPBadRequest: 400 Bad Request
+    ...
+
+We could emulate the entire clone/pull/push as further tests.
