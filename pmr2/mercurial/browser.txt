@@ -73,19 +73,12 @@ Rendering
 
 Now that the Mercurial archive has been extracted and with its workspace
 object created, we can now test the basic rendering of the landing page.
-The log listing on that page should contain every commit id within, with
-the correct datetime formatting.
 ::
 
     >>> request = TestRequest()
     >>> wkspc = self.portal.workspace.pmr2hgtest
     >>> testpage = browser.WorkspacePage(wkspc, request)
     >>> result = testpage()
-    >>> '<th>Log</th>' in result
-    True
-    >>> len([i for i in self.pmr2hgtest_revs if i in result]) == len(
-    ...     self.pmr2hgtest_revs)
-    True
 
 Now for a file listing, without any traverse subpaths.
 ::
@@ -186,6 +179,23 @@ and the supplied paginated listing should too.
     >>> 'http://nohost/plone/workspace/rdfmodel/@@log/b94d170115' in result
     True
     >>> '">(0)</a>' in result
+    True
+
+
+Shortlog viewer should have the links to the file listing.
+::
+
+    >>> request = TestRequest()
+    >>> testpage = browser.WorkspaceShortlog(wkspc, request)
+    >>> testpage.__name__ = 'log'
+    >>> testpage.update()
+    >>> result = testpage()
+    >>> 'http://nohost/plone/workspace/rdfmodel/@@log/b94d170115' in result
+    True
+    >>> '">(0)</a>' in result
+    True
+    >>> len([i for i in self.rdfmodel_revs if i in result]) == len(
+    ...     self.rdfmodel_revs)
     True
 
 ------------------------------
