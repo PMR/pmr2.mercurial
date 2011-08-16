@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-version = 'trunk'
+version = '0.5'
 
 setup(name='pmr2.mercurial',
       version=version,
