@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.5 - Released (2011-08-16)
+---------------------------
+
+* Dependency updated to mercurial 1.9.1
+
 0.4 - Released (2011-04-08)
 ---------------------------
 
