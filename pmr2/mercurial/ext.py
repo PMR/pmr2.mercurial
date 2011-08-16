@@ -2,16 +2,28 @@ import os.path
 import mimetypes
 
 # needed for manifest/status method addon
-from mercurial import util, cmdutil
+from mercurial import util
+from mercurial import scmutil
+from mercurial import cmdutil
+
 from mercurial.util import binary
-from mercurial import match as _match
-from mercurial.cmdutil import expandpats, match
-from mercurial.context import filectx, workingfilectx
+from mercurial import match as matchmod
+
+from mercurial.scmutil import expandpats
+from mercurial.scmutil import match
+from mercurial.scmutil import canonpath
+
+from mercurial.context import filectx
+from mercurial.context import workingfilectx
+
 from mercurial.i18n import _
 import mercurial.hgweb.hgweb_mod
 from mercurial.hgweb import webcommands
 from mercurial.hgweb import webutil
-from mercurial.hgweb.common import get_mtime, staticfile, paritygen
+
+from mercurial.hgweb.common import get_mtime
+from mercurial.hgweb.common import paritygen
+from mercurial.hgweb.common import staticfile
 
 # not overriding builtin hex function like Mercurial does.
 from binascii import hexlify
@@ -36,7 +48,7 @@ def hex_(data):
     else:
         return hexlify(data)
 
-# XXX modified commands.rename from mercurial 1.3
+# XXX modified commands.rename from mercurial 1.9.1
 def hg_rename(ui, repo, *pats, **opts):
     wlock = repo.wlock(False)
     try:
@@ -44,7 +56,7 @@ def hg_rename(ui, repo, *pats, **opts):
     finally:
         wlock.release()
 
-# XXX modified cmdutil.copy from mercurial 1.3
+# XXX modified cmdutil.copy from mercurial 1.9.1
 # changed to return a list of files moved.
 def hg_copy(ui, repo, pats, opts, rename=False):
     # called with the repo lock held
@@ -55,15 +67,17 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     targets = {}
     after = opts.get("after")
     dryrun = opts.get("dry_run")
+    wctx = repo[None]
 
     def walkpat(pat):
         srcs = []
-        m = match(repo, [pat], opts, globbed=True)
+        badstates = after and '?' or '?r'
+        m = scmutil.match(repo[None], [pat], opts, globbed=True)
         for abs in repo.walk(m):
             state = repo.dirstate[abs]
             rel = m.rel(abs)
             exact = m.exact(abs)
-            if state in '?r':
+            if state in badstates:
                 if exact and state == '?':
                     ui.warn(_('%s: not copying - file is not managed\n') % rel)
                 if exact and state == 'r':
@@ -79,11 +93,13 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     # relsrc: ossep
     # otarget: ossep
     def copyfile(abssrc, relsrc, otarget, exact):
-        abstarget = util.canonpath(repo.root, cwd, otarget)
+        abstarget = scmutil.canonpath(repo.root, cwd, otarget)
         reltarget = repo.pathto(abstarget, cwd)
         target = repo.wjoin(abstarget)
         src = repo.wjoin(abssrc)
         state = repo.dirstate[abstarget]
+
+        scmutil.checkportable(ui, abstarget)
 
         # check for collisions
         prevsrc = targets.get(abstarget)
@@ -94,7 +110,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
             return
 
         # check for overwrites
-        exists = os.path.exists(target)
+        exists = os.path.lexists(target)
         if not after and exists or after and state in 'mn':
             if not opts['force']:
                 ui.warn(_('%s: not overwriting - file exists\n') %
@@ -103,6 +119,12 @@ def hg_copy(ui, repo, pats, opts, rename=False):
 
         if after:
             if not exists:
+                if rename:
+                    ui.warn(_('%s: not recording move - %s does not exist\n') %
+                            (relsrc, reltarget))
+                else:
+                    ui.warn(_('%s: not recording copy - %s does not exist\n') %
+                            (relsrc, reltarget))
                 return
         elif not dryrun:
             try:
@@ -112,9 +134,11 @@ def hg_copy(ui, repo, pats, opts, rename=False):
                 if not os.path.isdir(targetdir):
                     os.makedirs(targetdir)
                 util.copyfile(src, target)
+                srcexists = True
             except IOError, inst:
                 if inst.errno == errno.ENOENT:
                     ui.warn(_('%s: deleted in working copy\n') % relsrc)
+                    srcexists = False
                 else:
                     ui.warn(_('%s: cannot copy - %s\n') %
                             (relsrc, inst.strerror))
@@ -129,23 +153,12 @@ def hg_copy(ui, repo, pats, opts, rename=False):
         targets[abstarget] = abssrc
 
         # fix up dirstate
-        origsrc = repo.dirstate.copied(abssrc) or abssrc
-        if abstarget == origsrc: # copying back a copy?
-            if state not in 'mn' and not dryrun:
-                repo.dirstate.normallookup(abstarget)
-        else:
-            if repo.dirstate[origsrc] == 'a' and origsrc == abssrc:
-                if not ui.quiet:
-                    ui.warn(_("%s has not been committed yet, so no copy "
-                              "data will be stored for %s.\n")
-                            % (repo.pathto(origsrc, cwd), reltarget))
-                if repo.dirstate[abstarget] in '?r' and not dryrun:
-                    repo[None].add([abstarget])
-            elif not dryrun:
-                repo[None].copy(origsrc, abstarget)
-
+        scmutil.dirstatecopy(ui, repo, wctx, abssrc, abstarget,
+                             dryrun=dryrun, cwd=cwd)
         if rename and not dryrun:
-            repo[None].remove([abssrc], not after)
+            if not after and srcexists:
+                util.unlinkpath(repo.wjoin(abssrc))
+            wctx.forget([abssrc])
 
     # pat: ossep
     # dest ossep
@@ -153,7 +166,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     # return: function that takes hgsep and returns ossep
     def targetpathfn(pat, dest, srcs):
         if os.path.isdir(pat):
-            abspfx = util.canonpath(repo.root, cwd, pat)
+            abspfx = scmutil.canonpath(repo.root, cwd, pat)
             abspfx = util.localpath(abspfx)
             if destdirexists:
                 striplen = len(os.path.split(abspfx)[0])
@@ -174,12 +187,12 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     # srcs: list of (hgsep, hgsep, ossep, bool)
     # return: function that takes hgsep and returns ossep
     def targetpathafterfn(pat, dest, srcs):
-        if _match.patkind(pat):
+        if matchmod.patkind(pat):
             # a mercurial pattern
             res = lambda p: os.path.join(dest,
                                          os.path.basename(util.localpath(p)))
         else:
-            abspfx = util.canonpath(repo.root, cwd, pat)
+            abspfx = scmutil.canonpath(repo.root, cwd, pat)
             if len(abspfx) < len(srcs[0][0]):
                 # A directory. Either the target path contains the last
                 # component of the source path or it does not.
@@ -187,7 +200,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
                     score = 0
                     for s in srcs:
                         t = os.path.join(dest, util.localpath(s[0])[striplen:])
-                        if os.path.exists(t):
+                        if os.path.lexists(t):
                             score += 1
                     return score
 
@@ -214,7 +227,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
         return res
 
 
-    pats = expandpats(pats)
+    pats = scmutil.expandpats(pats)
     if not pats:
         raise util.Abort(_('no source or destination specified'))
     if len(pats) == 1:
@@ -222,7 +235,7 @@ def hg_copy(ui, repo, pats, opts, rename=False):
     dest = pats.pop()
     destdirexists = os.path.isdir(dest) and not os.path.islink(dest)
     if not destdirexists:
-        if len(pats) > 1 or _match.patkind(pats[0]):
+        if len(pats) > 1 or matchmod.patkind(pats[0]):
             raise util.Abort(_('with multiple sources, destination must be an '
                                'existing directory'))
         if util.endswithsep(dest):

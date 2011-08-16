@@ -3,7 +3,14 @@ import re
 import cgi
 import ConfigParser
 from cStringIO import StringIO
-from mercurial import ui, hg, revlog, demandimport, cmdutil, util, context
+from mercurial import ui
+from mercurial import hg
+from mercurial import revlog
+from mercurial import demandimport
+from mercurial import cmdutil
+from mercurial import scmutil
+from mercurial import util
+from mercurial import context
 from mercurial.i18n import _
 
 from mercurial.hgweb.hgweb_mod import hgweb, perms
@@ -224,7 +231,7 @@ class Storage(object):
             except:
                 raise RevisionNotFoundError('revision %s not found' % rev)
 
-        clone_result = hg.clone(self._ui, source=self._rpath, dest=dest, 
+        clone_result = hg.clone(self._ui, {}, source=self._rpath, dest=dest, 
                 rev=rev, update=update)
         repo, repo_clone = clone_result
         # since it did get reinitialized.
@@ -773,13 +780,17 @@ class Sandbox(Storage):
         filtered = self._filter_paths(self._source_check(source))
         remove, forget = [], []
 
-        m = cmdutil.match(self._repo, filtered, {})
+        m = scmutil.match(self._repo[None], filtered, {})
         s = self._repo.status(match=m, clean=True)
         modified, added, deleted, clean = s[0], s[1], s[3], s[6]
         # assume forced, and purge
         remove, forget = modified + deleted + clean + added, added
-        self._repo[None].forget(forget)
-        self._repo[None].remove(remove, unlink=True)
+        for f in remove:
+            try:
+                util.unlinkpath(self._repo.wjoin(f))
+            except OSError, inst:
+                pass
+        self._repo[None].forget(remove)
 
     def rename(self, source, dest, force=False):
         """\
