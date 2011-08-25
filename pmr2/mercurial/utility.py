@@ -40,7 +40,13 @@ class MercurialStorageUtility(StorageUtility):
     # So we do this:
 
     def isprotocol(self, request):
-        return request.get('cmd', None) is not None
+        result = request.get('cmd', None) is not None
+        if not result:
+            # workaround, as POST request somehow QUERY_STRING is not
+            # parsed into request.form since Plone 4.1.
+            qs = request.environ.get('QUERY_STRING')
+            result = 'cmd=' in qs
+        return result
 
     def protocol(self, context, request):
         storage = self.acquireFrom(context)
