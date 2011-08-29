@@ -44,7 +44,7 @@ class MercurialStorageUtility(StorageUtility):
         if not result:
             # workaround, as POST request somehow QUERY_STRING is not
             # parsed into request.form since Plone 4.1.
-            qs = request.environ.get('QUERY_STRING')
+            qs = request.environ.get('QUERY_STRING', '')
             result = 'cmd=' in qs
         return result
 
