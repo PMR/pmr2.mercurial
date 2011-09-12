@@ -39,6 +39,8 @@ from pmr2.mercurial import *
 from pmr2.mercurial.interfaces import *
 from pmr2.mercurial.utility import *
 
+from pmr2.mercurial.tests import util
+
 
 class DummyWorkspace(object):
     zope.interface.implements(IWorkspace)
@@ -113,6 +115,11 @@ class UtilityTestCase(unittest.TestCase):
         sm.registerUtility(MercurialSettings(), IPMR2GlobalSettings)
         self.settings = zope.component.getUtility(IPMR2GlobalSettings)
         self.workspace = DummyWorkspace(self.repodir)
+
+        util.extract_archive(self.testdir)
+        self.pmr2hgtest = DummyWorkspace(join(self.testdir, 'pmr2hgtest'))
+        self.import1 = DummyWorkspace(join(self.testdir, 'import1'))
+        self.import2 = DummyWorkspace(join(self.testdir, 'import2'))
 
     def tearDown(self):
         shutil.rmtree(self.testdir)
@@ -206,6 +213,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': None,
+            'external': None,
         }
 
         # XXX this test _may_ fail at around midnight as the test data
@@ -232,6 +240,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'folder',
+            'external': None,
         },
         {
             'author': '',
@@ -247,6 +256,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'document',
+            'external': None,
         },
         {
             'author': '',
@@ -262,6 +272,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'document',
+            'external': None,
         },
         {
             'author': '',
@@ -277,6 +288,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'document',
+            'external': None,
         },
         ]
         self.assertEqual(answer, result)
@@ -300,6 +312,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': None,
+            'external': None,
         },
         {
             'author': '',
@@ -315,6 +328,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'folder',
+            'external': None,
         },
         ]
         self.assertEqual(answer, result)
@@ -338,6 +352,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': None,
+            'external': None,
         },
         {
             'author': '',
@@ -353,6 +368,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'document',
+            'external': None,
         },
         ]
         self.assertEqual(answer, result)
@@ -376,6 +392,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'document',
+            'external': None,
         },
         {
             'author': '',
@@ -391,6 +408,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': 'document',
+            'external': None,
         },
         ]
         self.assertEqual(answer, result)
@@ -432,6 +450,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': None,
+            'external': None,
         }
         self.assertEqual(answer, result)
         self.assertEqual(result['mimetype'](), 'text/plain; charset=us-ascii')
@@ -454,6 +473,7 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': None,
+            'external': None,
         }
         self.assertEqual(answer, result)
 
@@ -475,6 +495,123 @@ class UtilityTestCase(unittest.TestCase):
             'baseview': 'file',
             'fullpath': None,
             'contenttype': None,
+            'external': None,
+        }
+        self.assertEqual(answer, result)
+
+    def test_650_pathinfo_external(self):
+        storage = MercurialStorage(self.pmr2hgtest)
+        storage.checkout(util.ARCHIVE_REVS[1])
+        result = storage.pathinfo('ext/import1/')
+        answer = {
+            'author': '',
+            'permissions': 'lrwxrwxrwx',
+            'desc': '',
+            'node': util.ARCHIVE_REVS[1],
+            'date': result['date'],
+            'size': '',
+            'basename': '',
+            'file': 'ext/import1/',
+            'mimetype': result['mimetype'],
+            'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+            'external': {
+                '': '_subrepo',
+                'location': 'http://models.example.com/w/import1',
+                'path': '',
+                'rev': 'ce679be0c07e30e81f93cc308ccdaab97b4da313',
+            },
+        }
+        self.assertEqual(answer, result)
+
+    def test_651_pathinfo_external(self):
+        storage = MercurialStorage(self.pmr2hgtest)
+        storage.checkout(util.ARCHIVE_REVS[1])
+        result = storage.pathinfo('ext/import1/if1')
+        answer = {
+            'author': '',
+            'permissions': 'lrwxrwxrwx',
+            'desc': '',
+            'node': util.ARCHIVE_REVS[1],
+            'date': result['date'],
+            'size': '',
+            'basename': 'if1',
+            'file': 'ext/import1/if1',
+            'mimetype': result['mimetype'],
+            'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+            'external': {
+                '': '_subrepo',
+                'location': 'http://models.example.com/w/import1',
+                'path': 'if1',
+                'rev': 'ce679be0c07e30e81f93cc308ccdaab97b4da313',
+            },
+        }
+        self.assertEqual(answer, result)
+
+    def test_652_pathinfo_external(self):
+        storage = MercurialStorage(self.pmr2hgtest)
+        storage.checkout(util.ARCHIVE_REVS[1])
+        # does not exist yet
+        result = storage.pathinfo('ext/import2/if2')
+        self.assertRaises(PathNotFoundError, storage.pathinfo, 
+            'ext/import2/if2')
+
+    def test_661_pathinfo_external_newerrev(self):
+        storage = MercurialStorage(self.pmr2hgtest)
+        storage.checkout(util.ARCHIVE_REVS[4])
+        result = storage.pathinfo('ext/import1/if1')
+        answer = {
+            'author': '',
+            'permissions': 'lrwxrwxrwx',
+            'desc': '',
+            'node': util.ARCHIVE_REVS[4],
+            'date': result['date'],
+            'size': '',
+            'basename': 'if1',
+            'file': 'ext/import1/if1',
+            'mimetype': result['mimetype'],
+            'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+            'external': {
+                '': '_subrepo',
+                'location': 'http://models.example.com/w/import1',
+                'path': 'if1',
+                'rev': '4df76eccfee8a0d27844b5c069bc399bb0e4e043',
+            },
+        }
+        self.assertEqual(answer, result)
+
+    def test_652_pathinfo_external(self):
+        storage = MercurialStorage(self.pmr2hgtest)
+        storage.checkout(util.ARCHIVE_REVS[4])
+        result = storage.pathinfo('ext/import2/if2')
+        answer = {
+            'author': '',
+            'permissions': 'lrwxrwxrwx',
+            'desc': '',
+            'node': util.ARCHIVE_REVS[4],
+            'date': result['date'],
+            'size': '',
+            'basename': 'if2',
+            'file': 'ext/import2/if2',
+            'mimetype': result['mimetype'],
+            'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+            'external': {
+                '': '_subrepo',
+                'location': 'http://models.example.com/w/import2',
+                'path': 'if2',
+                'rev': 'a413e4d7eb3846209aa8df44addf625093aac231',
+            },
         }
         self.assertEqual(answer, result)
 

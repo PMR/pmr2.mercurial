@@ -344,6 +344,8 @@ class WebStorage(hgweb, Storage):
         and returns a structure.
         """
 
+        # XXX deprecate this method?
+
         try:
             it = webcommands.file(self, request, _t)
             return utils.add_aentries(it, datefmt)

@@ -16,6 +16,7 @@ from pmr2.mercurial import backend
 from pmr2.mercurial.utils import archive
 from pmr2.mercurial.utils import filter
 from pmr2.mercurial.utils import list_subrepo
+from pmr2.mercurial.utils import match_subrepo
 
 
 class MercurialStorageUtility(StorageUtility):
@@ -289,8 +290,9 @@ class MercurialStorage(BaseStorage):
     def pathinfo(self, path):
 
         if path in self.files():
-            data = self.fileinfo(path)
-        else:
+            return self.fileinfo(path)
+
+        try:
             listing = self.listdir(path)
             # consider using an iterator?
             contents = lambda: listing
@@ -301,6 +303,26 @@ class MercurialStorage(BaseStorage):
                 'size': '',
                 'path': path,
                 'contents': contents,
+            })
+        except PathNotFoundError:
+            # attempt to look for subrepo
+            ctx = self.storage._ctx
+            substate = ctx.substate
+            gen = match_subrepo(substate, path)
+            if not gen:
+                raise  # re-raise the PathNotFound
+            keys = gen.next()
+            # General syntax.
+            data = self.format(**{
+                'permissions': 'lrwxrwxrwx',
+                'contenttype': None,  # XXX unnecessary for now
+                'node': self.rev,
+                'date': '',
+                'size': '',
+                'path': path,
+                'desc': '',
+                'contents': '',
+                'external': keys,
             })
         return data
 
