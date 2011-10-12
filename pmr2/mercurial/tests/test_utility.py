@@ -453,7 +453,7 @@ class UtilityTestCase(unittest.TestCase):
             'external': None,
         }
         self.assertEqual(answer, result)
-        self.assertEqual(result['mimetype'](), 'text/plain; charset=us-ascii')
+        self.assertTrue(result['mimetype']().startswith('text/plain'))
 
     def test_601_pathinfo_nested_dir(self):
         storage = MercurialStorage(self.workspace)
