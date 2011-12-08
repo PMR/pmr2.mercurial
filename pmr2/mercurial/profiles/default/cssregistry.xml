@@ -6,6 +6,6 @@
     id="++resource++pmr2.mercurial.resource/mercurial.css"
     media="screen" rel="stylesheet" rendering="import"
     cacheable="True" compression="safe" cookable="True"
-    enabled="1" expression="" appendPrefix="True" />
+    enabled="1" expression="" applyPrefix="True" />
 
 </object>
