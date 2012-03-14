@@ -63,7 +63,7 @@ class MercurialSettings(object):
     dirOf = dirCreatedFor
 
 
-class UtilityTestCase(unittest.TestCase):
+class TestCase(unittest.TestCase):
 
     def setUp(self):
         # XXX split this out into the setup decorator?
@@ -121,18 +121,19 @@ class UtilityTestCase(unittest.TestCase):
         self.import1 = DummyWorkspace(join(self.testdir, 'import1'))
         self.import2 = DummyWorkspace(join(self.testdir, 'import2'))
 
+        self.simple1 = DummyWorkspace(join(self.testdir, 'simple1'))
+        self.simple2 = DummyWorkspace(join(self.testdir, 'simple2'))
+        self.simple3 = DummyWorkspace(join(self.testdir, 'simple3'))
+
     def tearDown(self):
         shutil.rmtree(self.testdir)
+
+
+class StorageTestCase(TestCase):
 
     def test_000_storage(self):
         # Direct instantiation
         storage = MercurialStorage(self.workspace)
-        self.assert_(IStorage.providedBy(storage))
-
-    def test_001_utility(self):
-        utility = MercurialStorageUtility()
-        storage = utility(self.workspace)
-        self.assert_(isinstance(storage, MercurialStorage))
         self.assert_(IStorage.providedBy(storage))
 
     def test_010_storage_base(self):
@@ -714,10 +715,59 @@ class UtilityTestCase(unittest.TestCase):
             self.assertEqual(tfile.extractfile(a).read(), c)
 
 
+class UtilityTestCase(TestCase):
+
+    def setUp(self):
+        super(UtilityTestCase, self).setUp()
+        self.filelist1 = ['README', 'test1', 'test2', 'test3',]
+
+    def test_0001_utility_base(self):
+        utility = MercurialStorageUtility()
+        storage = utility(self.workspace)
+        self.assert_(isinstance(storage, MercurialStorage))
+        self.assert_(IStorage.providedBy(storage))
+
+    def test_0100_sync(self):
+        utility = MercurialStorageUtility()
+        simple1 = utility(self.simple1)
+        filelist = simple1.files()
+        # verify file list for simple1
+        self.assertEqual(filelist, self.filelist1)
+        target = join(self.testdir, 'simple1')
+
+        # sync simple2 with simple1
+        utility.sync(self.simple2, target)
+        simple2 = utility(self.simple2)
+        simple2.checkout()
+        filelist = simple2.files()
+        self.assertEqual(filelist, self.filelist1)
+
+    def test_0101_sync_same_root_conflict_filenames(self):
+        utility = MercurialStorageUtility()
+        target = join(self.testdir, 'simple1')
+        # sync simple3 with simple1
+        utility.sync(self.simple3, target)
+        simple3 = utility(self.simple3)
+        simple3.checkout()
+        filelist = simple3.files()
+        self.assertEqual(filelist, self.filelist1)
+
+        # should be a better way to show this.
+        self.assertEqual(len(simple3.storage._repo.heads()), 2)
+
+    def test_0110_sync_mismatch_root(self):
+        utility = MercurialStorageUtility()
+        target = self.repodir
+        # just trap the most basic form
+        self.assertRaises(Exception, utility.sync, self.simple3, target)
+        # will need to update this once this exception is dealt with
+
+
 def test_suite():
     from unittest import TestSuite, makeSuite
     suite = TestSuite()
     if imported:
+        suite.addTest(makeSuite(StorageTestCase))
         suite.addTest(makeSuite(UtilityTestCase))
     return suite
 

@@ -54,6 +54,12 @@ class MercurialStorageUtility(StorageUtility):
         # Assume WSGI compatible.
         return storage.storage.process_request(request)
 
+    def sync(self, context, source):
+        rp = zope.component.getUtility(IPMR2GlobalSettings).dirOf(context)
+        # use the sandbox class directly on the path
+        sandbox = backend.Sandbox(rp)
+        sandbox.pull(source)
+
 
 class MercurialStorage(BaseStorage):
 
