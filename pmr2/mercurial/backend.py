@@ -366,6 +366,25 @@ class WebStorage(hgweb, Storage):
         protocol = mercurial.hgweb.protocol
         request.stdin.seek(0)
         env = dict(request.environ)
+
+        # the request object *should* be WSGI compliant as Mercurial
+        # supports it, but we have kind of completely wrap around it so
+        # might as well emulate it if it's missing.
+
+        if 'wsgi.version' not in env:
+            # 'REQUEST_URI' is missing but seems to be unused
+            env['REMOTE_HOST'] = env['REMOTE_ADDR']
+            # emulate wsgi environment
+            env['wsgi.version'] = (1, 0)
+            # environment variable has https
+            env['wsgi.url_scheme'] = \
+                request.base.split(':')[0]  # self.url_scheme
+            env['wsgi.input'] = request.stdin # self.rfile
+            env['wsgi.errors'] = StringIO() #_error_logger(self)
+            env['wsgi.multithread'] = True  # XXX guess
+            env['wsgi.multiprocess'] = True  # same as above
+            env['wsgi.run_once'] = True
+
         headers_set = []
         headers_sent = []
 
