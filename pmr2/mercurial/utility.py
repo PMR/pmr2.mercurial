@@ -58,7 +58,13 @@ class MercurialStorageUtility(StorageUtility):
         rp = zope.component.getUtility(IPMR2GlobalSettings).dirOf(context)
         # use the sandbox class directly on the path
         sandbox = backend.Sandbox(rp)
-        sandbox.pull(source)
+        heads = sandbox.pull(source, update=False)
+        msg = None
+        result = heads > 0
+        if heads == 0:
+            msg = 'No new changes found.'
+        # always successful, failure are exceptions
+        return True, msg
 
 
 class MercurialStorage(BaseStorage):

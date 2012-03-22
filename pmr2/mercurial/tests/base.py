@@ -74,3 +74,6 @@ class MercurialDocTestCase(ExposureDocTestCase):
         mkhg_workspace('import2')
         mkhg_workspace('pmr2hgtest')
         mkhg_workspace('rdfmodel')
+        mkhg_workspace('simple1')
+        mkhg_workspace('simple2')
+        mkhg_workspace('simple3')
