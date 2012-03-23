@@ -16,7 +16,7 @@ def test_suite():
         test_class=base.MercurialDocTestCase,
         optionflags=doctest.NORMALIZE_WHITESPACE|doctest.ELLIPSIS,
     )
-    synchronize.level = 9
+    synchronize.level = 9001
     return TestSuite([browser, synchronize])
 
 if __name__ == '__main__':
