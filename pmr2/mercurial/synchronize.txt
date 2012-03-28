@@ -75,6 +75,26 @@ Verify that the file list is updated:
     >>> simple2_files
     ['README', 'test1', 'test2', 'test3']
 
+However, if we were to use an valid protocol (such as file), an error
+will be generated instead.
+:::
+
+    >>> target_url = 'file://' + self.pmr2.dirOf(simple1)
+    >>> browser.open(simple2_url + '/sync')
+    >>> browser.getControl(name='form.widgets.external_uri').value = target_url
+    >>> browser.getControl(name='form.buttons.syncWithTarget').click()
+    >>> 'is using a forbiddened protocol.' in browser.contents
+    True
+
+Ditto with using a path directly.
+::
+
+    >>> browser.open(simple2_url + '/sync')
+    >>> browser.getControl(name='form.widgets.external_uri').value = target_url
+    >>> browser.getControl(name='form.buttons.syncWithTarget').click()
+    >>> 'is using a forbiddened protocol.' in browser.contents
+    True
+
 Shutdown the test server:
 ::
 
