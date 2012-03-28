@@ -291,3 +291,39 @@ Or even an incomplete protocol request.
     ...
     HTTPBadRequest: 400 Bad Request
     ...
+
+---------------------------
+Mercurial Workspace Forking
+---------------------------
+
+User workspace will need to be set up correctly in order for this test
+to function.  Make sure one is created for the current user.
+::
+
+    >>> self.pmr2.createUserWorkspaceContainer('test_user_1_')
+
+Make use of one of the workspace as the context and then activate the
+fork button.
+::
+
+    >>> simple1 = self.portal.workspace.simple1
+    >>> simple1_storage = zope.component.getAdapter(simple1, IStorage)
+    >>> request = build_wsgi_request('workspace_fork', {
+    ...     'form.buttons.fork': 1,
+    ... })
+    >>> form = browser.WorkspaceForkForm(simple1, request)
+    >>> form.update()
+
+A new workspace within the user's workspace container should be present:
+::
+
+    >>> cloned = self.pmr2.getCurrentUserWorkspaceContainer().get('simple1')
+    >>> cloned.storage == u'mercurial'
+    True
+
+The list of files between both of them should be equal.
+::
+
+    >>> cloned_storage = zope.component.getAdapter(cloned, IStorage)
+    >>> cloned_storage.files() == simple1_storage.files()
+    True

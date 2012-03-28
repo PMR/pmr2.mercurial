@@ -54,17 +54,22 @@ class MercurialStorageUtility(StorageUtility):
         # Assume WSGI compatible.
         return storage.storage.process_request(request)
 
-    def sync(self, context, source):
+    def syncIdentifier(self, context, identifier):
+        # method is not protected.
         rp = zope.component.getUtility(IPMR2GlobalSettings).dirOf(context)
         # use the sandbox class directly on the path
         sandbox = backend.Sandbox(rp)
-        heads = sandbox.pull(source, update=False)
+        heads = sandbox.pull(identifier, update=False)
         msg = None
         result = heads > 0
         if heads == 0:
             msg = 'No new changes found.'
         # always successful, failure are exceptions
         return True, msg
+
+    def syncWorkspace(self, context, source):
+        remote = zope.component.getUtility(IPMR2GlobalSettings).dirOf(source)
+        return self.syncIdentifier(context, remote)
 
 
 class MercurialStorage(BaseStorage):
