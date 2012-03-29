@@ -52,7 +52,7 @@ this.  Start one up.
     >>> server = startZServer()
 
 Now construct URL and sync with the target.
-:::
+::
 
     >>> target_url = 'http://%s:%s/plone/workspace/simple1' % server
     >>> browser.open(simple2_url + '/sync')
