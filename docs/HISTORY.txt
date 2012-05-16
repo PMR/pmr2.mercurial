@@ -1,12 +1,13 @@
 Changelog
 =========
 
-0.9 - Unreleased
-----------------
+0.9 - Released (2012-05-16)
+---------------------------
 
-* Dependency updated to mercurial 2.1
+* Dependency updated to mercurial 2.2.1
 * For the styles, apply the prefix directories so the icons and other
   related resources are rendered.
+* Removed dependency on WSGI compatible request.
 
 0.8 - Released (2012-02-10)
 ---------------------------

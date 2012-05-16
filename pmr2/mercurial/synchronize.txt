@@ -1,6 +1,10 @@
 This test needs to be done separately as proper cleanup of the spawned
 ZServer is not done, which will interfere with all normal tests.
 
+This can be avoided if we can override mercurial.url and splice the
+testbrowser opener director into that place (or into the httprepo that
+this testcase instantiates).
+
 ---------------
 Synchronization
 ---------------
