@@ -146,11 +146,7 @@ redirection.
     >>> subpath = [self.pmr2hgtest_revs[7], 'ext', 'import1']
     >>> testpage = self.traverse(wkspc, browser.FilePage, subpath)
     >>> testpage.update()
-    Traceback (most recent call last):
-    ...
-    HTTPFound: 302 Found
-    The resource was found at
-    http://models.example.com/w/import1/rawfile/4df76eccfe.../
+    'http://.../w/import1/rawfile/4df76eccfe.../'
 
 Try again with a different file and revision the intended redirection
 should also be triggered.  As the `__name__` would have been be set
@@ -161,11 +157,7 @@ during the acquisition of the form, we will emulate this here also.
     >>> testpage = self.traverse(wkspc, browser.FilePage, subpath)
     >>> testpage.__name__ = 'file'
     >>> testpage.update()
-    Traceback (most recent call last):
-    ...
-    HTTPFound: 302 Found
-    The resource was found at
-    http://models.example.com/w/import1/file/ce679be0c0.../if1
+    'http://.../w/import1/file/ce679be0c0.../if1'
 
 Subdirectories should work.  We use a different repo for this that has
 the subdirectories in place, and we do need a proper revision for the
@@ -192,7 +184,7 @@ Bad revision results in not found.
     >>> testpage.update()
     Traceback (most recent call last):
     ...
-    HTTPNotFound: 404 Not Found
+    NotFound: ...
     ...
 
 We also need to test the log viewer.  The entries should be rendered
@@ -275,7 +267,7 @@ In the case of future commands that we don't support, the anticipated
     >>> testpage.update()
     Traceback (most recent call last):
     ...
-    HTTPBadRequest: 400 Bad Request
+    BadRequest: ...
     ...
 
 Or even an incomplete protocol request.
@@ -289,7 +281,7 @@ Or even an incomplete protocol request.
     >>> testpage.update()
     Traceback (most recent call last):
     ...
-    HTTPBadRequest: 400 Bad Request
+    BadRequest: ...
     ...
 
 ---------------------------
