@@ -89,7 +89,7 @@ Now for a file listing, without any traverse subpaths.
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s /' % \
     ...     self.pmr2hgtest_revs[-1][:12]
-    >>> label in testpage.label
+    >>> label in result
     True
     >>> 'file1' in result
     True
@@ -108,7 +108,7 @@ a partial revision id.
     >>> result = testpage()
     >>> label = u'Location: pmr2hgtest @ %s /' % \
     ...     self.pmr2hgtest_revs[7][:12]
-    >>> label in testpage.label
+    >>> label in result
     True
     >>> 'file1' in result
     True
@@ -171,7 +171,7 @@ request_subpath.
     >>> result = testpage()
     >>> label = u'Location: rdfmodel @ %s / component' % \
     ...     testpage.request['rev'][:12]
-    >>> label in testpage.label
+    >>> label in result
     True
     >>> 'module.cellml' in result
     True
@@ -232,7 +232,7 @@ elements that Mercurial expects and uses.
     >>> request = build_wsgi_request('workspace_view', {
     ...     'cmd': 'heads',
     ... })
-    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage = browser.WorkspacePage(context, request)
     >>> testpage.update()
     >>> result = testpage()
     >>> print result
@@ -250,7 +250,7 @@ page should never be rendered.
     ...     'cmd': 'listkeys',
     ...     'namespace': 'bookmarks',
     ... })
-    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage = browser.WorkspacePage(context, request)
     >>> testpage.update()
     >>> result = testpage()
     >>> print result
@@ -263,8 +263,9 @@ In the case of future commands that we don't support, the anticipated
     >>> request = build_wsgi_request('workspace_view', {
     ...     'cmd': 'badcmd',
     ... })
-    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage = browser.WorkspacePage(context, request)
     >>> testpage.update()
+    >>> testpage.render()
     Traceback (most recent call last):
     ...
     BadRequest: ...
@@ -277,8 +278,9 @@ Or even an incomplete protocol request.
     >>> request = build_wsgi_request('workspace_view', {
     ...     'cmd': 'listkeys',
     ... })
-    >>> testpage = browser.WorkspacePageView(context, request)
+    >>> testpage = browser.WorkspacePage(context, request)
     >>> testpage.update()
+    >>> testpage.render()
     Traceback (most recent call last):
     ...
     BadRequest: ...
