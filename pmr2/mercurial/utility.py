@@ -292,7 +292,7 @@ class MercurialStorage(BaseStorage):
                 fctx = ctx.filectx(full)
                 yield self.format(**{
                     'permissions': '-rw-r--r--',
-                    'contenttype': 'document',  # XXX based on css type (lazy)
+                    'contenttype': 'file',
                     'node': self.rev,
                     'date': filter(fctx.date(), self.datefmtfilter),
                     'size': str(fctx.size()),

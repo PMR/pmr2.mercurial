@@ -1,6 +1,3 @@
-.contentype-hg {
-    line-height: 2em;
-    display: inline-block;
-    padding-left: 20px !important;
-    background: no-repeat transparent 0px 4px url(contentype-mercurial.png);
+.icon-hg {
+    background: no-repeat transparent -2px -2px url(contentype-mercurial.png);
 }
