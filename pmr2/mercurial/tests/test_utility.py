@@ -15,7 +15,7 @@ imported = True
 try:
     import zope.component
     import zope.interface
-    from zope.app.component.hooks import getSiteManager
+    from zope.component.hooks import getSiteManager
     from zope.publisher.browser import TestRequest
 
     from zope.configuration.xmlconfig import xmlconfig
@@ -256,7 +256,7 @@ class StorageTestCase(TestCase):
             'contents': result[1]['contents'],
             'baseview': 'file',
             'fullpath': None,
-            'contenttype': 'document',
+            'contenttype': 'file',
             'external': None,
         },
         {
@@ -272,7 +272,7 @@ class StorageTestCase(TestCase):
             'contents': result[2]['contents'],
             'baseview': 'file',
             'fullpath': None,
-            'contenttype': 'document',
+            'contenttype': 'file',
             'external': None,
         },
         {
@@ -288,7 +288,7 @@ class StorageTestCase(TestCase):
             'contents': result[3]['contents'],
             'baseview': 'file',
             'fullpath': None,
-            'contenttype': 'document',
+            'contenttype': 'file',
             'external': None,
         },
         ]
@@ -368,7 +368,7 @@ class StorageTestCase(TestCase):
             'contents': result[1]['contents'],
             'baseview': 'file',
             'fullpath': None,
-            'contenttype': 'document',
+            'contenttype': 'file',
             'external': None,
         },
         ]
@@ -392,7 +392,7 @@ class StorageTestCase(TestCase):
             'contents': result[0]['contents'],
             'baseview': 'file',
             'fullpath': None,
-            'contenttype': 'document',
+            'contenttype': 'file',
             'external': None,
         },
         {
@@ -408,7 +408,7 @@ class StorageTestCase(TestCase):
             'contents': result[1]['contents'],
             'baseview': 'file',
             'fullpath': None,
-            'contenttype': 'document',
+            'contenttype': 'file',
             'external': None,
         },
         ]
