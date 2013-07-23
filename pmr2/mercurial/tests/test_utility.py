@@ -617,6 +617,33 @@ class StorageTestCase(TestCase):
         }
         self.assertEqual(answer, result)
 
+    def test_663_pathinfo_external_external(self):
+        storage = MercurialStorage(self.pmr2hgtest)
+        storage.checkout(util.ARCHIVE_REVS[4])
+        result = storage.pathinfo('ext/import1/import2/README')
+        answer = {
+            'author': '',
+            'permissions': 'lrwxrwxrwx',
+            'desc': '',
+            'node': util.ARCHIVE_REVS[4],
+            'date': result['date'],
+            'size': '',
+            'basename': 'README',
+            'file': 'ext/import1/import2/README',
+            'mimetype': result['mimetype'],
+            'contents': result['contents'],
+            'baseview': 'file',
+            'fullpath': None,
+            'contenttype': None,
+            'external': {
+                '': '_subrepo',
+                'location': 'http://models.example.com/w/import1',
+                'path': 'import2/README',
+                'rev': '4df76eccfee8a0d27844b5c069bc399bb0e4e043',
+            },
+        }
+        self.assertEqual(answer, result)
+
     def test_700_archiveFormats(self):
         storage = MercurialStorage(self.workspace)
         formats = storage.archiveFormats
