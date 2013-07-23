@@ -558,7 +558,6 @@ class StorageTestCase(TestCase):
         storage = MercurialStorage(self.pmr2hgtest)
         storage.checkout(util.ARCHIVE_REVS[1])
         # does not exist yet
-        result = storage.pathinfo('ext/import2/if2')
         self.assertRaises(PathNotFoundError, storage.pathinfo, 
             'ext/import2/if2')
 
@@ -589,7 +588,7 @@ class StorageTestCase(TestCase):
         }
         self.assertEqual(answer, result)
 
-    def test_652_pathinfo_external(self):
+    def test_662_pathinfo_external(self):
         storage = MercurialStorage(self.pmr2hgtest)
         storage.checkout(util.ARCHIVE_REVS[4])
         result = storage.pathinfo('ext/import2/if2')
