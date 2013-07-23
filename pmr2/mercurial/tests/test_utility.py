@@ -190,6 +190,8 @@ class StorageTestCase(TestCase):
     def test_350_storage_file_not_found(self):
         storage = MercurialStorage(self.workspace)
         self.assertRaises(PathNotFoundError, storage.file, 'failepicfail')
+        self.assertRaises(PathNotFoundError, storage.file, 'nested')
+        self.assertRaises(PathNotFoundError, storage.file, 'nested/deep/dir')
         storage.checkout(self.revs[0])
         self.assertRaises(PathNotFoundError, storage.file, self.nested_name)
         self.assertRaises(PathNotFoundError, storage.file, 'file3')
