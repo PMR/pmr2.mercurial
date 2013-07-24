@@ -1,27 +1,43 @@
 Introduction
 ============
 
-This package is the Mercurial wrappers for PMR2.
+``pmr.mercurial`` provides a wrapper API around some of the internal
+methods provided by the ``mercurial`` package, and the Mercurial storage
+backend for the Physiome Model Repository (PMR).  Thus, this package is
+intended to be used in conjunction with the `PMR Software Suite`_.
 
+.. _PMR software suite: https://github.com/PMR/pmr2.buildout/
 
-Notes
-=====
+Installation
+------------
 
-This package will most likely be migrated to a new namespace under 
-pmr2.backend.  This has the advantage of allowing multiple backends to
-be supported by providing a common interface, which will be called
-pmr2.backend.interface.
+By default, this package is included in the ``buildout.cfg`` within the
+``pmr2.buildout`` package, which provides the instructions and scripts
+for the installation of the complete PMR Software Suite.
 
+While not recommended, you may manually install this package onto any
+Zope/Plone installation by modifying the ``buildout.cfg`` to include
+this package at the relevant locations, for example::
 
-Correct implementation and usage of Zope, WSGI, Repoze
-------------------------------------------------------
+    [buildout]
+    ...
 
-While the original mercurial web implementation follows the wsgi
-standards, Zope/Plone didn't until I learned about repoze (refactored
-Zope server stack to follow wsgi).  This is why instead I extend hgweb
-to be part of the wsgi stack, I reuse/reimplemented a number of methods
-to be "compatible" with original zope.  However, now that I moved to
-using repoze some of these really should be rewritten to be compatible
-with that new stack.  Then again, this is working out well enough for
-now, so I am deferring the implementation of the "correct" approach 
-until I have more time for it.
+    [instance]
+    ...
+
+    eggs =
+        ...
+        pmr2.mercurial
+
+    zcml =
+        ...
+        pmr2.mercurial
+
+Also, the find-links attribute need to include the download location
+of the tarball for this package.
+
+Usage
+-----
+
+For further usage information, please refer to the tests and the
+associated text files within.
