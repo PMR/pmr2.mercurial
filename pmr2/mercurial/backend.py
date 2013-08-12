@@ -258,6 +258,7 @@ class Storage(object):
         def changelist(entries, **x):
             for i in entries():
                 i['date'] = getdate(i['date'])
+                i['email'] = utils.filter(i['author'], 'email')
                 if shortlog:
                     i['desc'] = utils.filter(i['desc'], 'firstline')
                     i['author'] = utils.filter(i['author'], 'person')
