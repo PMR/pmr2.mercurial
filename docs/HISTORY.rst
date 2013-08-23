@@ -1,6 +1,13 @@
 Changelog
 =========
 
+0.11 - Unreleased
+-----------------
+
+* API version bump
+* Fixed some test cases
+* Split out email field.
+
 0.10.1 - Released (2013-07-08)
 ------------------------------
 
