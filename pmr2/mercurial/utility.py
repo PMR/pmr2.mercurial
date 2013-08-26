@@ -350,12 +350,15 @@ class MercurialStorage(BaseStorage):
             # We have to merge Mercurial's before and after structure
             # together.
             result = []
-            for i in nav['before']():
+            before = (callable(nav['before']) and nav['before']()
+                or nav['before'])
+            after = (callable(nav['after']) and nav['after']() or nav['after'])
+            for i in before:
                 result.append({
                     'href': i['node'],
                     'label': i['label'],
                 })
-            for i in nav['after']():
+            for i in after:
                 result.append({
                     'href': i['node'],
                     'label': i['label'],

@@ -309,7 +309,7 @@ def changelog(web, ctx, tmpl, shortlog = False):
     pos = end - 1
     parity = paritygen(web.stripecount, offset=start-end)
 
-    changenav = webutil.revnavgen(pos, maxchanges, count, web.repo.changectx)
+    changenav = webutil.revnav(web.repo).gen(pos, maxchanges, count)
 
     return tmpl(shortlog and 'shortlog' or 'changelog',
                 changenav=changenav,

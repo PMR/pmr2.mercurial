@@ -234,7 +234,7 @@ class Storage(object):
                 rev=rev, update=update)
         repo, repo_clone = clone_result
         # since it did get reinitialized.
-        self._repo = repo
+        self._repo = repo.local()  # the self reference is always a local
 
     def log(self, rev=None, branch=None, shortlog=False, 
             datefmt=None, maxchanges=None, *a, **kw):
@@ -719,7 +719,7 @@ class Sandbox(Storage):
         if source == 'default':
             raise RepoNotFoundError('no suitable repository found')
 
-        other = hg.repository(self._ui, source)
+        other = hg.peer(self._repo, {}, source)
         self._ui.status('pulling from %s\n' % (source))
         modheads = self._repo.pull(other, revs)
 
@@ -764,7 +764,7 @@ class Sandbox(Storage):
 
         if dest in ('default', 'default-push',):
             raise RepoNotFoundError('no suitable target found')
-        other = hg.repository(self._ui, dest)
+        other = hg.peer(self._repo, {}, dest)
         self._ui.status('pushing to %s\n' % (dest))
         if revs:
             revs = [self._repo.lookup(rev) for rev in revs]

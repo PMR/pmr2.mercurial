@@ -25,7 +25,7 @@ setup(name='pmr2.mercurial',
       install_requires=[
           'setuptools',
           # -*- Extra requirements: -*-
-          'mercurial==2.2.3',
+          'mercurial==2.7',
       ],
       entry_points="""
       # -*- Entry points: -*-
