@@ -20,7 +20,9 @@ from pmr2.mercurial.utils import match_subrepo
 
 
 class MercurialStorageUtility(StorageUtility):
-    title = 'Mercurial'
+    title = u'Mercurial'
+    command = u'hg'
+    clone_verb = u'clone'
 
     def create(self, context):
         rp = zope.component.getUtility(IPMR2GlobalSettings).dirOf(context)
