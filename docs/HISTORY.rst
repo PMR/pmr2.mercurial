@@ -4,9 +4,11 @@ Changelog
 0.11 - Unreleased
 -----------------
 
-* API version bump
+* Mercurial version bump to 2.8.2
 * Fixed some test cases
 * Split out email field.
+* Bug fix: ensure the protocol response always set correct headers even
+  if no responses were generated.
 
 0.10.1 - Released (2013-07-08)
 ------------------------------
