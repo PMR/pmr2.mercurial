@@ -478,9 +478,16 @@ class WebStorage(hgweb, Storage):
                 # consistent...
                 raise ProtocolError()
 
-        # XXX writing value out here because method expects it.
+        # writing value out here because caller expects the complete
+        # response to be returned by this method.
         for chunk in content:
             write(chunk)
+
+        # ensure that the write is called once so that headers are
+        # properly set
+        if not content:
+            write('')
+
         return out.getvalue()
 
 
