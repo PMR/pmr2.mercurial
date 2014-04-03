@@ -1,8 +1,8 @@
 Changelog
 =========
 
-0.11 - Unreleased
------------------
+0.11 - Relased (2014-04-03)
+---------------------------
 
 * Mercurial version bump to 2.8.2
 * Fixed some test cases
