@@ -1,24 +1,27 @@
-This test needs to be done separately as proper cleanup of the spawned
-ZServer is not done, which will interfere with all normal tests.
-
-This can be avoided if we can override mercurial.url and splice the
-testbrowser opener director into that place (or into the httprepo that
-this testcase instantiates).
-
 ---------------
 Synchronization
 ---------------
 
-A more comprehensive test can be done.  We are going to make use of the
-testbrowser Browser for this test.  First log-in.
-::
+A more comprehensive test can be done by doing this as an integration
+test.  Normally we should use ``zope.testbrowser.browser.Browser`` as
+the Browser class, however that will test over http for every request
+regardless, which will interfere with the internal requests that will
+be made by Mercurial.  In this case, ``Testing.testbrowser.Browser``,
+the "legacy" test browser class, will be used.
+
+Anyway, first import some things and set up the browser::
 
     >>> import zope.component
-    >>> from pmr2.app.workspace.interfaces import *
+    >>> portal = layer['portal']
+    >>> from pmr2.app.workspace.interfaces import IStorage
+    >>> from pmr2.app.settings.interfaces import IPMR2GlobalSettings
     >>> from Testing.testbrowser import Browser
     >>> from Products.PloneTestCase.setup import portal_owner, default_password
     >>> browser = Browser()
-    >>> portal_url = self.portal.absolute_url()
+
+Now we log in.::
+
+    >>> portal_url = portal.absolute_url()
     >>> browser.open(portal_url + '/login')
     >>> browser.getControl(name='__ac_name').value = portal_owner
     >>> browser.getControl(name='__ac_password').value = default_password
@@ -27,8 +30,8 @@ testbrowser Browser for this test.  First log-in.
 Initialize and verify some values:
 ::
 
-    >>> simple1 = self.portal.workspace.simple1
-    >>> simple2 = self.portal.workspace.simple2
+    >>> simple1 = portal.workspace.simple1
+    >>> simple2 = portal.workspace.simple2
     >>> simple1_url = simple1.absolute_url()
     >>> simple2_url = simple2.absolute_url()
     >>> simple1_storage = zope.component.getAdapter(simple1, IStorage)
@@ -43,22 +46,20 @@ Initialize and verify some values:
 Publish the target also.
 ::
 
+    >>> from plone.app.testing.interfaces import TEST_USER_NAME
+    >>> from plone.app.testing.interfaces import TEST_USER_ID
+    >>> from plone.app.testing.helpers import setRoles
+    >>> from plone.app.testing.helpers import login
     >>> from Products.CMFCore.utils import getToolByName
-    >>> self.setRoles(('Manager',))
-    >>> wft = getToolByName(self.portal, 'portal_workflow')
+    >>> login(portal, TEST_USER_NAME)
+    >>> setRoles(portal, TEST_USER_ID, ['Manager',])
+    >>> wft = getToolByName(portal, 'portal_workflow')
     >>> wft.doActionFor(simple1, 'publish')
-
-As Mercurial expects a real IP address, we need a real server to test
-this.  Start one up.
-::
-
-    >>> from Testing.ZopeTestCase.utils import startZServer
-    >>> server = startZServer()
 
 Now construct URL and sync with the target.
 ::
 
-    >>> target_url = 'http://%s:%s/plone/workspace/simple1' % server
+    >>> target_url = 'http://localhost:55001/plone/workspace/simple1'
     >>> browser.open(simple2_url + '/sync')
     >>> browser.getControl(name='form.widgets.external_uri').value = target_url
     >>> browser.getControl(name='form.buttons.syncWithTarget').click()
@@ -83,7 +84,8 @@ However, if we were to use an valid protocol (such as file), an error
 will be generated instead.
 :::
 
-    >>> target_url = 'file://' + self.pmr2.dirOf(simple1)
+    >>> settings = zope.component.getUtility(IPMR2GlobalSettings)
+    >>> target_url = 'file://' + settings.dirOf(simple1)
     >>> browser.open(simple2_url + '/sync')
     >>> browser.getControl(name='form.widgets.external_uri').value = target_url
     >>> browser.getControl(name='form.buttons.syncWithTarget').click()
@@ -98,12 +100,3 @@ Ditto with using a path directly.
     >>> browser.getControl(name='form.buttons.syncWithTarget').click()
     >>> 'is using a forbiddened protocol.' in browser.contents
     True
-
-Shutdown the test server:
-::
-
-    >>> import threading
-    >>> from Testing.ZopeTestCase.threadutils import QuietThread
-    >>> for t in threading.enumerate():
-    ...     if isinstance(t, QuietThread):
-    ...         t._Thread__stop()
