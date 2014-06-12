@@ -3,6 +3,7 @@ from os.path import join
 
 import zope.component
 
+from plone.testing import Layer
 from plone.testing.z2 import ZSERVER_FIXTURE
 from plone.app.testing import IntegrationTesting
 from plone.app.testing import FunctionalTesting
@@ -16,12 +17,16 @@ from pmr2.app.workspace.tests.base import WorkspaceDocTestCase
 from pmr2.app.exposure.tests.base import ExposureDocTestCase
 from pmr2.app.settings.interfaces import IPMR2GlobalSettings
 
+from pmr2.app.tests.layer import PMR2_FIXTURE
 from pmr2.app.workspace.tests.layer import WORKSPACE_BASE_FIXTURE
 
 
 class MercurialBaseLayer(PloneSandboxLayer):
 
-    defaultBases = (PLONE_FIXTURE,)
+    # Because of the inability for this to actually work..
+    # defaultBases = (PLONE_FIXTURE,)
+    # we have to use the more extended one
+    defaultBases = (WORKSPACE_BASE_FIXTURE,)
 
     def setUpZope(self, app, configurationContext):
         import pmr2.mercurial
@@ -40,7 +45,9 @@ MERCURIAL_BASE_INTEGRATION_LAYER = IntegrationTesting(
 
 class MercurialLayer(PloneSandboxLayer):
 
-    defaultBases = (WORKSPACE_BASE_FIXTURE, MERCURIAL_BASE_FIXTURE,)
+    # This for whatever reason will cause failures....
+    # defaultBases = (PMR2_FIXTURE, MERCURIAL_BASE_FIXTURE,)
+    defaultBases = (MERCURIAL_BASE_FIXTURE,)
 
     def setUpPloneSite(self, portal):
         import pmr2.mercurial.tests
