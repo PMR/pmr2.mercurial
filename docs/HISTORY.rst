@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.12 - Unreleased
+-----------------
+
+* New test layers, and the synchronized tests are now run by default
+  using that layer.
+* Implement the generation of post-push events rather than relying on
+  the default fallback.
+
 0.11 - Relased (2014-04-03)
 ---------------------------
 
