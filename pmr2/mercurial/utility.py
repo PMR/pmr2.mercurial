@@ -3,12 +3,15 @@ from os.path import basename
 from cStringIO import StringIO
 import zope.component
 
+from urlparse import parse_qsl
 from mercurial.hgweb import webutil
 from mercurial import archival
 
 from pmr2.app.settings.interfaces import IPMR2GlobalSettings
 from pmr2.app.workspace.exceptions import *
 from pmr2.app.workspace.interfaces import IWorkspace
+from pmr2.app.workspace.event import Push
+from pmr2.app.workspace.storage import ProtocolResult
 from pmr2.app.workspace.storage import StorageUtility
 from pmr2.app.workspace.storage import BaseStorage
 
@@ -54,7 +57,13 @@ class MercurialStorageUtility(StorageUtility):
     def protocol(self, context, request):
         storage = self.acquireFrom(context)
         # Assume WSGI compatible.
-        return storage.storage.process_request(request)
+        raw_result = storage.storage.process_request(request)
+        event = None
+        if (request.method == 'POST' and
+                dict(parse_qsl(request.environ.get('QUERY_STRING', ''))).get(
+                    'cmd') == 'unbundle'):
+            event = Push(context)
+        return ProtocolResult(raw_result, event)
 
     def syncIdentifier(self, context, identifier):
         # method is not protected.

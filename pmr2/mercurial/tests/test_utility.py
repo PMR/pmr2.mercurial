@@ -16,7 +16,6 @@ try:
     import zope.component
     import zope.interface
     from zope.component.hooks import getSiteManager
-    from zope.publisher.browser import TestRequest
 
     from zope.configuration.xmlconfig import xmlconfig
     from zope.component.tests import clearZCML
@@ -29,6 +28,7 @@ try:
     from pmr2.app.settings.interfaces import IPMR2GlobalSettings
     from pmr2.app.workspace.exceptions import *
     from pmr2.app.workspace.interfaces import IWorkspace, IStorage
+    from pmr2.testing.base import TestRequest
 except:
     logger.warn('One or more pmr2.app modules could not be imported; '
                 'IStorage utility tests cannot commence.')
@@ -789,6 +789,30 @@ class UtilityTestCase(TestCase):
         # just trap the most basic form
         self.assertRaises(Exception, utility.sync, self.simple3, target)
         # will need to update this once this exception is dealt with
+
+    def test_0200_protocol_default(self):
+        utility = MercurialStorageUtility()
+        req = TestRequest()
+        req.base = 'http://127.0.0.1'
+        req.method = 'GET'
+        req.environ['QUERY_STRING'] = 'cmd=capabilities'
+        req.environ['REMOTE_ADDR'] = '127.0.0.1'
+        req.environ['SCRIPT_NAME'] = 'script'
+        req.stdin = StringIO()
+        result = utility.protocol(self.workspace, req)
+        self.assertTrue(result.event is None)
+
+    def test_0201_protocol_push(self):
+        utility = MercurialStorageUtility()
+        req = TestRequest()
+        req.base = 'http://127.0.0.1'
+        req.method = 'POST'
+        req.environ['QUERY_STRING'] = 'cmd=unbundle'
+        req.environ['REMOTE_ADDR'] = '127.0.0.1'
+        req.environ['SCRIPT_NAME'] = 'script'
+        req.stdin = StringIO()
+        result = utility.protocol(self.workspace, req)
+        self.assertFalse(result.event is None)
 
 
 def test_suite():
