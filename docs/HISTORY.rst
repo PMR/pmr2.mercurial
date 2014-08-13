@@ -1,16 +1,18 @@
 Changelog
 =========
 
-0.12 - Unreleased
------------------
+0.12 - Released (2014-08-14)
+----------------------------
 
 * New test layers, and the synchronized tests are now run by default
   using that layer.
 * Implement the generation of post-push events rather than relying on
-  the default fallback.
+  the default fallback whenever an operation that manipulated the
+  underlying Mercurial repo happened (specifically only the unbundle
+  operation, rather than for all POST requests like previously).
 
-0.11 - Relased (2014-04-03)
----------------------------
+0.11 - Released (2014-04-03)
+----------------------------
 
 * Mercurial version bump to 2.8.2
 * Fixed some test cases
