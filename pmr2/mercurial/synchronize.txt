@@ -27,15 +27,6 @@ Now we log in.::
     >>> browser.getControl(name='__ac_password').value = default_password
     >>> browser.getControl(name='submit').click()
 
-Work around some bugs with interactions with CSRF protection within this
-test site as first time accessing this object causes a write somewhere
-else within the Plone framework while logged in as a portal owner the
-first time::
-
-    >>> browser.getLink('workspace').click()
-    >>> if 'form.button.confirm' in browser.contents:
-    ...     browser.getControl(name='form.button.confirm').click()
-
 Initialize and verify some values:
 ::
 
@@ -73,11 +64,19 @@ Now construct URL and sync with the target.
     >>> browser.getControl(name='form.widgets.external_uri').value = target_url
     >>> browser.getControl(name='form.buttons.syncWithTarget').click()
 
+Work around some bugs with interactions with CSRF protection within this
+test site as first time accessing this object causes a write somewhere
+else within the Plone framework while logged in as a portal owner the
+first time::
+
+    >>> if 'form.button.confirm' in browser.contents:
+    ...     browser.getControl(name='form.button.confirm').click()
+
 Should have been redirected back to main page.
 ::
 
-    >>> browser.url
-    '.../plone/workspace/simple2'
+    >>> 'plone/workspace/simple2' in browser.url
+    True
     >>> 'README' in browser.contents
     True
 
