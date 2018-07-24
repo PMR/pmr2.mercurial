@@ -1,3 +1,8 @@
+UNMAINTANED PACKAGE
+===================
+
+This package is no longer in use or maintained for the mean time.
+
 Introduction
 ============
 
